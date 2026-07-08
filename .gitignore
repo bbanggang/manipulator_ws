@@ -1,0 +1,14 @@
+# Python 가상환경 (uv.lock으로 재생성: cd envs/lerobot && uv sync)
+envs/*/.venv/
+__pycache__/
+*.pyc
+
+# 학습 산출물 — 체크포인트는 HF Hub(heongyu/act_so101_t1 등)에 보관
+envs/*/outputs/
+
+# 로그·일시 파일
+logs/
+nohup.out
+
+# 카메라 점검 스냅샷
+setup/snapshots/

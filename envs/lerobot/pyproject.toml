@@ -1,0 +1,9 @@
+[project]
+name = "lerobot-env"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.10"
+dependencies = [
+    "lerobot[feetech,pi0,smolvla]>=0.4.4",
+    "matplotlib>=3.10.9",
+]

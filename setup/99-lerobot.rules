@@ -1,0 +1,21 @@
+# SO-ARM101 udev rules — 카메라·시리얼 경로 고정 (2026-07-08 실측 완성)
+# 설치: sudo cp 99-lerobot.rules /etc/udev/rules.d/ && sudo udevadm control --reload-rules && sudo udevadm trigger
+#
+# ⚠️ 카메라 rule은 물리 포트(KERNELS) 기준 — 카메라 USB 포트를 옮기면 rule도 수정해야 함.
+#    (두 카메라가 동일 모델 0bda:5844 + 동일 시리얼이라 by-id 구분 불가 → 포트 고정 방식 채택)
+
+# ─── 로봇 팔 (CH343 USB-serial, 1a86:55d3 — 어댑터 고유 시리얼로 구분) ───
+# ✅ 확정 (2026-07-08 unplug 테스트): LEADER=5AE6054948, FOLLOWER=5AE6083400
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="55d3", ATTRS{serial}=="5AE6054948", SYMLINK+="ttyLEADER", MODE="0666"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="55d3", ATTRS{serial}=="5AE6083400", SYMLINK+="ttyFOLLOWER", MODE="0666"
+
+# ─── 카메라 (0bda:5844 × 2 — 물리 포트로 구분, index0만 심볼릭) ───
+# 2026-07-08 포트 이동 후: 허브가 루트 포트 9 (키보드·마우스 허브) 아래로 이동
+# top   : 1-9.3.3   — 전경 뷰
+# wrist : 1-9.3.4.1 — 그리퍼 뷰 (허브 3단 — MJPG 필수)
+SUBSYSTEM=="video4linux", KERNELS=="1-9.3.3:1.0", ATTR{index}=="0", SYMLINK+="cam_top", MODE="0666"
+SUBSYSTEM=="video4linux", KERNELS=="1-9.3.4.1:1.0", ATTR{index}=="0", SYMLINK+="cam_wrist", MODE="0666"
+
+# ─── 시리얼 접근 권한 (dialout 그룹 없이도 접근) ───
+KERNEL=="ttyACM[0-9]*", MODE="0666"
+KERNEL=="ttyUSB[0-9]*", MODE="0666"
