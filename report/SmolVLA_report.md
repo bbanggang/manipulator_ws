@@ -1,9 +1,10 @@
-# SmolVLA 모델 진행 보고서 — Zero-shot 시도 및 불가 판정
+# SmolVLA 모델 진행 보고서 — Zero-shot 불가 판정 → Few-episode FT (T1 SR 50%)
 
-> 작성일: 2026-07-09 | SmolVLA zero-shot 진단 완료, **Few-episode FT로 전환 결정**
+> 작성일: 2026-07-09 | SmolVLA zero-shot 진단 완료 → Few-episode FT 전환·T1 측정까지 완료
 > 프로젝트: 단일 SO-ARM101 매니퓰레이터로 4개 모델(ACT / SmolVLA / π0 / GR00T N1.5)의
 > 학습 및 zero-shot 성능을 비교한다. 본 문서는 두 번째 모델 **SmolVLA**의 zero-shot
-> 시도 전 과정과, 왜 이 경로가 불가능하다고 결론 내렸는지를 정리한다.
+> 시도 전 과정(왜 불가능한지 규명, §1~7)과, 이어서 진행한 **few-episode 파인튜닝
+> 결과(§8, T1 성공률 50%)**까지 정리한다.
 
 ---
 
@@ -164,25 +165,66 @@ task당 50개 시연(5개 시작 위치 × 10 궤적)으로 파인튜닝한 뒤*
 
 ---
 
-## 8. 다음 진행 계획 — Few-episode Fine-tuning으로 전환
+## 8. Few-episode Fine-tuning 실행 및 결과 (2026-07-09)
 
-논문이 유일하게 검증한 경로(task당 50개 시연)로 SmolVLA를 재평가한다.
+기존 ACT용 30ep(`heongyu/so101_t1_pickplace`)를 그대로 재사용해 `lerobot/smolvla_base`에서
+파인튜닝했다(`setup/smolvla/train_smolvla_t1.sh`, batch_size=16·steps=20,000).
 
-| 항목 | 내용 |
+### 8.1 학습 결과
+
+| 항목 | 값 |
 |---|---|
-| 논문 프로토콜 | task당 50개 시연 (5개 시작 위치 × 10 궤적) |
-| 우리 기존 자산 | `heongyu/so101_t1_pickplace` **30ep** (ACT용으로 이미 수집) — 즉시 재사용 가능 |
-| 학습 비용 | vision encoder 동결, action expert만 학습 → 5070 Ti 16GB에서 로컬 완결 가능 |
-| 비교 프레임 변화 | ACT(from-scratch FT) vs SmolVLA(SO-100 사전학습 위 FT) — **"사전학습이 실제로 도움이 되는가"**를 직접 비교하는 흥미로운 축이 새로 생김 |
-| 프로젝트 전체 시사점 | π0·GR00T도 특정 임바디먼트 미학습 시 동일한 zero-shot 실패 위험 — 이번 사례가 사전 경고 신호. D6·D7 진행 시 정규화 버그를 먼저 점검할 것 |
+| 최종 loss | 0.064 → **0.006~0.007** (24.55 epoch, grad norm 0.14로 안정) |
+| 결과물 | `heongyu/smolvla_so101_t1` — `observation.images.top/wrist` 그대로 기대(카메라 리네이밍 불필요, zero-shot과 대비되는 지점) |
 
-**절차**:
-1. `record_t1.sh 10 resume`으로 T1을 50ep까지 보강 (또는 기존 30ep로 우선 시작)
-2. `train_act_t1.sh`를 참고해 `train_smolvla_t1.sh` 작성 (`policy.type=smolvla`)
-3. 학습된 체크포인트로 평가 스크립트 재사용해 측정 → ACT와 나란히 비교
+### 8.2 T1 측정 결과 (10회, 그리드 순환) — **성공률 5/10 (50%)**
+
+| 결과 | 시행 | 특징 |
+|---|---|---|
+| ✅ 성공 | 2, 4, 5, 7, 8 | 시행8은 **1차 파지 실패 → 스스로 재접근 → 2차 파지 성공**까지 확인(회복 행동) |
+| ❌ 미접촉 | 0, 1, 3 | 접근만 하고 파지 시도 없음 |
+| ❌ 파지 성공·배치 실패 | 6, 9 | 큐브를 쥐긴 했으나 박스에 넣지 못하고 진행 정지 |
+
+VRAM 피크 2.48GB. 대표 클립: `report/clips/smolvla_ft_t1_success_trial8.mp4`,
+`smolvla_ft_t1_fail_trial6.mp4`.
+
+### 8.3 ACT와 비교 (동일 30ep 데이터)
+
+| 모델 | T1 SR |
+|---|---|
+| ACT (from-scratch) | 80% |
+| SmolVLA-FT (SO-100 사전학습 위) | 50% |
+
+이 데이터 규모(30ep, 논문 기준 50ep 미만)에서는 **ACT가 수치상 앞선다** — SmolVLA의
+사전학습 이점이 적은 데이터로는 충분히 발휘되지 못한 것으로 보인다. 그러나 **zero-shot
+(사실상 0%) 대비는 압도적 개선**이며, 실패 양상의 질도 다르다: zero-shot은 물체 인식·접근
+자체가 없는 완전 붕괴였던 반면, FT 후에는 실패해도 "물체 근처까지 접근" 또는 "파지는
+성공"하는 수준이고, 특히 실패 후 **스스로 재시도해 성공하는 회복 행동**(시행8)까지
+관찰됐다 — ACT가 실패 시 완전히 멈춰버리는 것과 대비된다.
+
+### 8.4 시사점
+
+Few-episode FT는 §7에서 확정한 zero-shot의 근본적 한계를 확실히 해결한다 — SO-101이
+사전학습에 전혀 없었어도 30ep 파인튜닝만으로 "완전 무반응"에서 "50% 성공, 나머지도
+근접 실패"로 능력이 생겼다. 다만 논문 기준(50ep)에 못 미치는 데이터로는 ACT를 못 넘어섰다
+— 데이터를 보강하면 역전 가능성이 있는 지점으로, 향후 실험 후보다.
 
 ---
 
-*관련 문서: [model_markdown/02_SmolVLA.md](../model_markdown/02_SmolVLA.md) (상세 진단 로그·체크리스트),
+## 9. 다음 진행 계획
+
+| 단계 | 내용 | 상태 |
+|---|---|---|
+| SmolVLA zero-shot 진단 | 불가 판정 확정 (§3~7) | ✅ 완료 |
+| **SmolVLA-T1 FT** | 30ep로 학습·측정 (SR 50%, §8) | ✅ 완료 |
+| SmolVLA-T2 FT | Table Cleanup 데이터 수집·학습·측정 | ▶ 다음 |
+| (선택) T1 데이터 50ep 보강 | 논문 프로토콜에 맞춰 ACT 역전 여부 검증 | 후보 |
+| π0 | zero-shot 시도 — **이번 SmolVLA 정규화 버그를 먼저 점검**(동일 실패 가능성) | 예정 |
+| GR00T N1.5 | zero-shot 시도 | 예정 |
+| 최종 | 4모델 비교표 + 결론 | 예정 |
+
+---
+
+*관련 문서: [model_markdown/02_SmolVLA.md](../model_markdown/02_SmolVLA.md) (상세 진단 로그·체크리스트·측정 기록표),
 [report/ACT_report.md](ACT_report.md) (동일 형식의 ACT 보고서),
 [model_markdown/README.md](../model_markdown/README.md) (전체 프로젝트 가이드라인)*

@@ -1,8 +1,11 @@
 """lerobot-train loss 실시간 모니터 (모델 공용) — 로그 파싱 → PNG 갱신 (15초 주기).
 
-실행:  cd ~/manipulator_ws/envs/lerobot && uv run python ../../setup/common/loss_monitor.py [로그경로]
-보기:  eog ~/manipulator_ws/logs/loss_curve.png   (파일 갱신 시 자동 리로드)
+실행:  cd ~/manipulator_ws/envs/lerobot && uv run python ../../setup/common/loss_monitor.py [로그경로] [총_step수]
+보기:  eog ~/manipulator_ws/logs/loss_curve_<로그이름>.png   (파일 갱신 시 자동 리로드)
 종료:  Ctrl+C
+
+⚠️ 총_step수는 학습 스크립트의 --steps 값과 반드시 일치시킬 것 (ETA 계산 기준값).
+   생략 시 100000(ACT 기본값) 가정 — 다른 step 수로 학습 중이면 반드시 명시.
 """
 import re
 import sys
@@ -16,8 +19,8 @@ import matplotlib.pyplot as plt
 
 LOG = Path(sys.argv[1]) if len(sys.argv) > 1 else Path.home() / "manipulator_ws/logs/act_t1.log"
 OUT = Path.home() / f"manipulator_ws/logs/loss_curve_{LOG.stem}.png"
-TOTAL_STEPS = 100_000
-LABEL = LOG.stem  # 예: act_t1.log -> "act_t1"
+TOTAL_STEPS = int(sys.argv[2]) if len(sys.argv) > 2 else 100_000
+LABEL = LOG.stem  # 예: smolvla_t1.log -> "smolvla_t1"
 
 PAT = re.compile(
     r"step:(\d+(?:\.\d+)?)(K|M)?\s.*?loss:([\d.]+).*?updt_s:([\d.]+)\s+data_s:([\d.]+)"
@@ -56,9 +59,9 @@ def render(steps, losses, sec_per_step):
     )
     ax.set_yscale("log")
     ax.set_xlabel("step", color="#666666")
-    ax.set_ylabel("total loss (L1 + 10·KL, log scale)", color="#666666")
+    ax.set_ylabel("total loss (log scale)", color="#666666")
     ax.set_title(
-        f"ACT-T1 training  ·  step {steps[-1]:,}/{TOTAL_STEPS:,}"
+        f"{LABEL} training  ·  step {steps[-1]:,}/{TOTAL_STEPS:,}"
         f"  ·  ETA ≈ {eta_h:.1f}h",
         color="#333333", fontsize=11, loc="left",
     )
