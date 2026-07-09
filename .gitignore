@@ -11,4 +11,4 @@ logs/
 nohup.out
 
 # 카메라 점검 스냅샷
-setup/snapshots/
+setup/hardware/snapshots/

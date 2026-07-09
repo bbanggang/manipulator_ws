@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # 카메라 빠른 점검: 링크 존재 → MJPG 동시 스트림 fps → 스냅샷 저장
-cd "$(dirname "$0")/../envs/lerobot" || exit 1
+cd "$(dirname "$0")/../../envs/lerobot" || exit 1
 
 echo "── 장치 링크"
-ls -l /dev/cam_top /dev/cam_wrist /dev/ttyLEADER /dev/ttyFOLLOWER 2>&1
+ls -l /dev/cam_top /dev/cam_wrist /dev/cam_side /dev/ttyLEADER /dev/ttyFOLLOWER 2>&1
 
 echo "── MJPG 동시 스트림 테스트 (3초)"
 uv run python - <<'EOF'
 import cv2, time, os
-out = os.path.expanduser("~/manipulator_ws/setup/snapshots")
+out = os.path.expanduser("~/manipulator_ws/setup/hardware/snapshots")
 os.makedirs(out, exist_ok=True)
 caps = {}
-for name in ["top", "wrist"]:
+for name in ["top", "wrist", "side"]:
     c = cv2.VideoCapture(f"/dev/cam_{name}")
     c.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
     c.set(cv2.CAP_PROP_FRAME_WIDTH, 640); c.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -30,5 +30,5 @@ for k, c in caps.items():
     if k in last:
         cv2.imwrite(f"{out}/{k}.jpg", last[k])
     c.release()
-print(f"  스냅샷 저장: {out}/top.jpg, wrist.jpg")
+print(f"  스냅샷 저장: {out}/top.jpg, wrist.jpg, side.jpg")
 EOF

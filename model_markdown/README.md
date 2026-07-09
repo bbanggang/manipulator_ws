@@ -101,7 +101,7 @@
   - 확정 셋업: 물체 = **빨간 큐브**, 용기 = **검은 박스**, 언어 명령 = "Pick up the red cube and place it in the black box"
   - 캘리브레이션 완료 (follower/leader), wrist 카메라 초점 조정 완료
   - ⚠️ 트러블슈팅 기록: wrist 영상 깨짐 = YUYV 대역폭 포화 → **fourcc MJPG로 해결** / 데이터셋 영상은 AV1 인코딩 → 학습 전 `sudo apt install ffmpeg` 필요 (torchcodec 의존)
-  - 헬퍼 스크립트: `setup/teleop.sh`, `check_cameras.sh`, `record_t1.sh`, `reset_dataset.sh`
+  - 헬퍼 스크립트: `setup/hardware/teleop.sh`, `setup/hardware/check_cameras.sh`, `setup/data/record_t1.sh`, `setup/data/reset_dataset.sh`
 - [x] **D3 (완료 7/9)** T2(Table Cleanup, 색 3개 셔플 배치) 30ep 수집 완료 (32,835프레임, NaN 0)
   - 물체: 빨강/노랑/초록 큐브, 1에피소드=3개 연쇄 pick-place, 5종 이상 배치 패턴 확인
   - Hub: `heongyu/so101_t2_cleanup` (3개 청크 push 완료)

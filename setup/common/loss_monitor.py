@@ -1,6 +1,6 @@
-"""ACT 학습 loss 실시간 모니터 — 로그 파싱 → PNG 갱신 (15초 주기).
+"""lerobot-train loss 실시간 모니터 (모델 공용) — 로그 파싱 → PNG 갱신 (15초 주기).
 
-실행:  cd ~/manipulator_ws/envs/lerobot && uv run python ../../setup/loss_monitor.py [로그경로]
+실행:  cd ~/manipulator_ws/envs/lerobot && uv run python ../../setup/common/loss_monitor.py [로그경로]
 보기:  eog ~/manipulator_ws/logs/loss_curve.png   (파일 갱신 시 자동 리로드)
 종료:  Ctrl+C
 """
@@ -15,8 +15,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 LOG = Path(sys.argv[1]) if len(sys.argv) > 1 else Path.home() / "manipulator_ws/logs/act_t1.log"
-OUT = Path.home() / "manipulator_ws/logs/loss_curve.png"
+OUT = Path.home() / f"manipulator_ws/logs/loss_curve_{LOG.stem}.png"
 TOTAL_STEPS = 100_000
+LABEL = LOG.stem  # 예: act_t1.log -> "act_t1"
 
 PAT = re.compile(
     r"step:(\d+(?:\.\d+)?)(K|M)?\s.*?loss:([\d.]+).*?updt_s:([\d.]+)\s+data_s:([\d.]+)"

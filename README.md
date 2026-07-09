@@ -13,17 +13,25 @@ manipulator_ws/
 │  ├─ 02_SmolVLA.md  #   SmolVLA (zero-shot 주력)
 │  ├─ 03_Pi0.md      #   π0 (zero-shot + 5090 원격 FT)
 │  └─ 04_GR00T_N1.5.md
-├─ report/           # 진행 보고서 (ACT 학습 전 과정 등)
-├─ setup/            # 재현용 스크립트
-│  ├─ 99-lerobot.rules      # udev: 카메라·시리얼 경로 고정
-│  ├─ identify_devices.sh   # 장치 식별
-│  ├─ check_cameras.sh      # 카메라 점검 (링크·fps·스냅샷)
-│  ├─ teleop.sh             # teleoperation (MJPG 강제)
-│  ├─ record_t1.sh          # T1 데이터 수집
-│  ├─ reset_dataset.sh      # 데이터셋 초기화 (로컬+Hub)
-│  ├─ train_act_t1.sh       # ACT-T1 학습
-│  ├─ loss_monitor.py       # 학습 loss 실시간 그래프
-│  └─ wrist_cam_tune.py     # 카메라 초점/아티팩트 튜닝
+├─ report/           # 진행 보고서 (ACT/SmolVLA 전 과정 등)
+├─ setup/            # 재현용 스크립트 (기능별/모델별 하위 디렉터리)
+│  ├─ hardware/             # 장치 공통: udev rules, 카메라 점검·튜닝, teleop
+│  │  ├─ 99-lerobot.rules   #   카메라·시리얼 경로 고정
+│  │  ├─ identify_devices.sh
+│  │  ├─ check_cameras.sh
+│  │  ├─ teleop.sh
+│  │  └─ wrist_cam_tune.py
+│  ├─ data/                 # 데이터 수집·관리 (모델 공용)
+│  │  ├─ record_t1.sh / record_t2.sh
+│  │  └─ reset_dataset.sh
+│  ├─ common/                # 모델 공용 학습 유틸
+│  │  └─ loss_monitor.py
+│  ├─ act/                   # ACT 학습·평가
+│  │  ├─ train_act_t1.sh / train_act_t2.sh
+│  │  └─ eval_act_t1.sh / eval_act_t2.sh
+│  └─ smolvla/                # SmolVLA 평가·진단
+│     ├─ eval_smolvla_t1.sh
+│     └─ diag_fixed_norm.py  #   정규화 stats 오버라이드 진단 스크립트
 └─ envs/
    ├─ lerobot/       # uv 프로젝트 (lerobot 0.4.4 + torch cu128) — uv sync로 재현
    └─ gr00t/         # uv 프로젝트 (Isaac-GR00T용, 격리)
@@ -39,7 +47,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 cd envs/lerobot && uv sync
 
 # 3. udev rules 설치 (장치 경로 고정 — 포트가 다르면 identify_devices.sh로 재확인)
-sudo cp setup/99-lerobot.rules /etc/udev/rules.d/
+sudo cp setup/hardware/99-lerobot.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules && sudo udevadm trigger
 
 # 4. 시스템 의존성

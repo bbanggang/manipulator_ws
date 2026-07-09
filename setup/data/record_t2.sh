@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # ACT T2 (Table Cleanup) 데이터 수집 — heongyu/so101_t2_cleanup
-# 사용법: ./setup/record_t2.sh [에피소드 수]   (기본 10 — 세션 나눠 수집 권장)
-#         ./setup/record_t2.sh 10 resume      (기존 데이터셋에 이어서)
+# 사용법: ./setup/data/record_t2.sh [에피소드 수]   (기본 10 — 세션 나눠 수집 권장)
+#         ./setup/data/record_t2.sh 10 resume      (기존 데이터셋에 이어서)
 #
 # 에피소드 구성: 1회 = 빨강 집기→넣기 → 노랑 집기→넣기 → 초록 집기→넣기 → 종료(→키)
 #   (물체 3개를 한 에피소드 안에서 순차로 모두 박스에 정리)
 # 리셋 시: 3개 물체 모두 회수 후 그리드 3지점에 재배치(색 배치는 매 에피소드 셔플),
 #          leader로 팔 대기 자세 복귀
 # 키보드: → 에피소드 종료·저장 / ← 재녹화 / ESC 세션 종료
-cd "$(dirname "$0")/../envs/lerobot" || exit 1
+cd "$(dirname "$0")/../../envs/lerobot" || exit 1
 
 NUM="${1:-10}"
 RESUME=""

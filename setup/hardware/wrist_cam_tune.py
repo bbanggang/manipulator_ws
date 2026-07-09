@@ -1,6 +1,6 @@
 """Wrist 카메라 초점 조정 + 가로선 아티팩트 실시간 관찰 도구.
 
-실행:  cd ~/manipulator_ws/envs/lerobot && uv run python ../../setup/wrist_cam_tune.py
+실행:  cd ~/manipulator_ws/envs/lerobot && uv run python ../../setup/hardware/wrist_cam_tune.py
 종료:  Ctrl+C
 
 사용법:

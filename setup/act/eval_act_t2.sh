@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ACT-T2 정책 평가 (Table Cleanup) — 에피소드 중엔 정책이 제어, 리셋 시간엔 leader(teleop)로 팔 복귀
-# 사용법: ./setup/eval_act_t2.sh [에피소드 수]      (기본 1 — dry-run)
-#         ./setup/eval_act_t2.sh 10 push           (10회 측정 + Hub 업로드)
+# 사용법: ./setup/act/eval_act_t2.sh [에피소드 수]      (기본 1 — dry-run)
+#         ./setup/act/eval_act_t2.sh 10 push           (10회 측정 + Hub 업로드)
 #
 # ⚠️ leader 팔도 전원·연결 필요 (리셋 시 대기 자세 복귀용)
 # 시작 전: 빨강/노랑/초록 3개를 그리드 3지점에 모두 배치 (색 순서 무관)
 # 리셋 절차: 3개 회수 → 색 셔플 재배치 → leader로 팔을 대기 자세로 → 손 빼기
 # 키보드: →(에피소드 종료·저장) / ESC(세션 종료)   ⚠️ 이상 동작 시 즉시 Ctrl+C
-cd "$(dirname "$0")/../envs/lerobot" || exit 1
+cd "$(dirname "$0")/../../envs/lerobot" || exit 1
 
 NUM="${1:-1}"
 PUSH="false"

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # 데이터셋 초기화: record 프로세스 종료 → 로컬 삭제 → HF Hub repo 재생성(빈 private)
-# 사용법: ./setup/reset_dataset.sh t1     (heongyu/so101_t1_pickplace)
-#         ./setup/reset_dataset.sh t2     (heongyu/so101_t2_cleanup)
-#         ./setup/reset_dataset.sh <repo_id>   (임의 repo 직접 지정)
+# 사용법: ./setup/data/reset_dataset.sh t1     (heongyu/so101_t1_pickplace)
+#         ./setup/data/reset_dataset.sh t2     (heongyu/so101_t2_cleanup)
+#         ./setup/data/reset_dataset.sh <repo_id>   (임의 repo 직접 지정)
 set -u
-cd "$(dirname "$0")/../envs/lerobot" || exit 1
+cd "$(dirname "$0")/../../envs/lerobot" || exit 1
 
 case "${1:-}" in
   t1) REPO="heongyu/so101_t1_pickplace" ;;
