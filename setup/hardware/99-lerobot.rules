@@ -12,11 +12,12 @@ SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="55d3", ATTRS{seria
 # ─── 카메라 (0bda:5844 × 3 — 물리 포트로 구분, index0만 심볼릭) ───
 # 2026-07-08 포트 이동 후: 허브가 루트 포트 9 (키보드·마우스 허브) 아래로 이동
 # top   : 1-9.3.3     — 전경 뷰
-# wrist : 1-9.3.4.1   — 그리퍼 뷰 (허브 3단 — MJPG 필수)
+# wrist : 1-4          — 그리퍼 뷰 (2026-07-11: 허브 1-9.3 반복 전체 다운(전원 부족 추정) 때문에
+#                        허브에서 분리해 PC 직결 포트로 이동 — 기존 1-9.3.4.1 rule은 제거)
 # side  : 1-10        — 측면 각도 뷰 (2026-07-09 추가, 서보 대역폭 경합 방지 위해
 #                        허브 대신 PC 직결 포트 사용 — SmolVLA 3캠 테스트용)
 SUBSYSTEM=="video4linux", KERNELS=="1-9.3.3:1.0", ATTR{index}=="0", SYMLINK+="cam_top", MODE="0666"
-SUBSYSTEM=="video4linux", KERNELS=="1-9.3.4.1:1.0", ATTR{index}=="0", SYMLINK+="cam_wrist", MODE="0666"
+SUBSYSTEM=="video4linux", KERNELS=="1-4:1.0", ATTR{index}=="0", SYMLINK+="cam_wrist", MODE="0666"
 SUBSYSTEM=="video4linux", KERNELS=="1-10:1.0", ATTR{index}=="0", SYMLINK+="cam_side", MODE="0666"
 
 # ─── 시리얼 접근 권한 (dialout 그룹 없이도 접근) ───
