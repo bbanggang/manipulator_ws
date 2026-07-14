@@ -17,23 +17,32 @@ LAUNCHER="$(cd "$(dirname "$0")" && pwd)/_robot_client_launcher.py"
 cd "$(dirname "$0")/../../envs/lerobot" || exit 1
 
 SERVER="${SERVER:-192.168.0.56:8080}"
+# 클램프 조정(진단용): MRT=25 ./infer_...ft.sh. 0이면 클램프 해제(위험, 감시필수).
+MRT="${MRT:-8.0}"
+# 청크 aggregation: AGG=latest_only 로 블렌딩 제거(진동 원인 테스트). 기본 weighted_average.
+AGG="${AGG:-weighted_average}"
+# rerun 실시간 시각화: RERUN=1 기본. 카메라·state·action_cmd(명령)·action_sent(클램프후) 로깅.
+export RERUN="${RERUN:-1}"
+# 파일 로깅: 매 스텝 dt_ms(끊김 진단)+cmd+sent 를 CSV로 기록(분석용).
+export LOGFILE="${LOGFILE:-$HOME/manipulator_ws/logs/pi0_infer/$(date +%Y%m%d_%H%M%S).csv}"
 
 CAMS='{ top:   {type: opencv, index_or_path: /dev/cam_top,   width: 640, height: 480, fps: 30, fourcc: MJPG},
         wrist: {type: opencv, index_or_path: /dev/cam_wrist, width: 640, height: 480, fps: 30, fourcc: MJPG}}'
 
+echo "로그 파일: $LOGFILE  (aggregate=$AGG, max_relative_target=$MRT)"
 # NOTE: `python -m lerobot.async_inference.robot_client`는 so_follower 미등록으로
 # --robot.type 선택지가 비어 에러남 → 로봇 config를 먼저 등록하는 런처로 우회.
 exec uv run python "$LAUNCHER" \
   --server_address="$SERVER" \
   --robot.type=so101_follower --robot.port=/dev/ttyFOLLOWER --robot.id=follower \
-  --robot.max_relative_target=8.0 \
+  --robot.max_relative_target="$MRT" \
   --robot.cameras="$CAMS" \
   --task="Pick up the red cube and place it in the black box" \
   --policy_type=pi0 \
-  --pretrained_name_or_path=/home/user_lerobot/work/train/pi0_t1/checkpoints/last/pretrained_model \
+  --pretrained_name_or_path=/home/user_lerobot/work/train/pi0_t1_expert/checkpoints/last/pretrained_model \
   --policy_device=cuda \
   --actions_per_chunk=50 \
   --chunk_size_threshold=0.5 \
   --fps=30 \
-  --aggregate_fn_name=weighted_average \
+  --aggregate_fn_name="$AGG" \
   --debug_visualize_queue_size=true
