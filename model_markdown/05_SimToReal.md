@@ -41,6 +41,17 @@
 
 ---
 
+## 0.4 모델별 개별 페이지 (체크리스트·결과 기록표)
+
+| 모델 | 페이지 |
+|---|---|
+| ACT | [sim2real/01_ACT_sim.md](sim2real/01_ACT_sim.md) |
+| SmolVLA | [sim2real/02_SmolVLA_sim.md](sim2real/02_SmolVLA_sim.md) |
+| π0 | [sim2real/03_Pi0_sim.md](sim2real/03_Pi0_sim.md) |
+| GR00T | [sim2real/04_GR00T_sim.md](sim2real/04_GR00T_sim.md) |
+
+---
+
 ## 1. ACT (from-scratch, 로컬 5070Ti)
 
 **계획**
