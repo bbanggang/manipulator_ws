@@ -6,4 +6,6 @@ requires-python = ">=3.10"
 dependencies = [
     "lerobot[feetech,pi0,smolvla,async]>=0.4.4",
     "matplotlib>=3.10.9",
+    "msgpack>=1.2.1",
+    "pyzmq>=27.1.0",
 ]
