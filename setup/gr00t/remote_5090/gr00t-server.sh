@@ -17,7 +17,7 @@ if [ "$CMD" = "logs" ]; then exec tail -f ~/gr00t_remote/server.log; fi
 if [ "$CMD" = "stop" ]; then pkill -f inference_service.py && echo 서버종료 || echo 서버없음; exit 0; fi
 
 case "$CMD" in
-  t1) CKPT=~/gr00t_remote/checkpoints/gr00t_t1_vis/checkpoint-10000 ;;    # vision 학습 포함(v3). 이전: _trim(v2), gr00t_t1(v1)
+  t1) CKPT=~/gr00t_remote/checkpoints/gr00t_t1_vis2/checkpoint-10000 ;;   # v4: tune_visual + grad accum 8(유효batch32), loss~0.009/12.66ep. 이전: _vis(v3), _trim(v2), gr00t_t1(v1)
   t2) CKPT=~/gr00t_remote/checkpoints/gr00t_t2/checkpoint-10000 ;;
   *)  echo "사용법: $0 {t1|t2|logs|stop}"; exit 1 ;;
 esac

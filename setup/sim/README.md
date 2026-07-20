@@ -25,11 +25,54 @@
 
 ## 2. 공통 파이프라인 (5단계)
 
-### Phase 0 — 환경 (진행 중)
+### Phase 0 — 환경 (로컬 완료, 2026-07-20)
 - [x] 양 PC Docker + NVIDIA Container Toolkit
-- [ ] 양 PC `teleop-docker`(Isaac Sim/Lab) 이미지 빌드 — **진행 중**
-- [ ] sim 컨테이너 기동 + SO-101 씬 로드 확인 (`list_envs`, `zero_agent`)
+- [x] 양 PC `teleop-docker`(Isaac Sim/Lab) 이미지 빌드 완료 — 로컬·원격 모두
+  같은 git commit(`1d62ec5`)·같은 `FROM nvcr.io/nvidia/isaac-lab:2.3.2` 태그로 빌드해
+  **버전 동일 확인**(Isaac Lab 2.3.2 / Isaac Sim 5.1.0-rc.19, 양쪽 이미지 내부 조회로 검증).
+  Dockerfile이 베이스 이미지 태그·lerobot 커밋(`e670ac5`)·주요 패키지를 전부 고정하고 있어
+  빌드 시점이 달라도 버전 드리프트 없음
+- [x] sim 컨테이너 기동 + SO-101 씬 로드 확인 (`list_envs`) — 6개 환경
+  (Base/Task/Vials-To-Rack/-DR/-Eval/-DR-Eval) 전부 정상 등록, Kit 앱 정상 기동(~38s)
+- [x] `zero_agent`로 GUI 렌더링 육안 확인 (로컬) — SO-101 팔·바이알 2개·노란 랙·검은 매트·
+  라이트박스 전부 정상 렌더링, RTX Real-Time 모드, IsaacLab 패널에 씬 오브젝트(Vial 1~3,
+  Rack Left, Robot) 정상 바인딩
+  - 명령: `zero_agent --task Lerobot-So101-Teleop-Vials-To-Rack --num_envs 1`
+    (⚠️ `--task`는 필수 인자 — 생략 시 `AttributeError: 'NoneType' has no attribute 'split'`)
+- [x] 원격 5090: git-lfs 설치 + `git lfs pull` + headless 씬 로드 검증 완료
+  (`zero_agent --headless`, 에러 0건, GPU 정상 사용) — GUI 없이 학습·평가 서버용으로 사용
+- [x] 로컬 리더암 teleop 연결 검증 (`lerobot_agent`) — 실물 리더암이 sim SO-101을 구동함 확인
 - [ ] (필요 시) 5090 추론 컨테이너 `./docker/real/build.sh blackwell`
+
+#### ⚠️ 함정: 컨테이너 실행 시 필수 마운트
+entrypoint가 `set -e` 상태에서 `source /root/env`와 `pip install -e .../source/...`를 수행하므로
+**`docker/env`와 `source` 마운트를 빠뜨리면 컨테이너가 즉시 exit 1**로 죽는다. 게다가
+entrypoint의 `source /root/env 2>/dev/null`이 에러를 삼켜 **아무 출력 없이 종료**되므로
+원인 파악이 어렵다. 최소 필수 마운트:
+```
+-v $(pwd)/docker/env:/root/env
+-v $(pwd)/source:/workspace/Sim-to-Real-SO-101-Workshop/source
+```
+
+#### 리더암 teleop 시 calibration 경로 주의
+컨테이너의 lerobot(핀 `e670ac5`)은 `calibration/teleoperators/**so101_leader**/leader.json`을
+기대하는데, 실기 환경(lerobot 0.6.x)은 `**so_leader**/`에 저장한다. 포맷은 완전히 동일
+(`id`/`drive_mode`/`homing_offset`/`range_min`/`range_max`)하므로 **복사본을 만들어 해결**:
+```bash
+docker exec teleop bash -c "cp /root/.cache/huggingface/lerobot/calibration/teleoperators/so_leader/leader.json \
+  /root/.cache/huggingface/lerobot/calibration/teleoperators/so101_leader/leader.json"
+```
+(디렉터리가 컨테이너 root 권한으로 생성되므로 호스트에서 cp하면 Permission denied — 컨테이너 안에서 실행)
+
+#### ⚠️ 함정: USD 에셋이 git-lfs 포인터로 남아있음
+워크숍 저장소의 `.usd`/`.usda`는 전부 git-lfs 관리 대상인데, git-lfs 미설치 상태로 clone하면
+**130바이트짜리 포인터 파일만** 받아진다. 이 상태로 실행하면:
+```
+FileNotFoundError: Unable to open the usd file at path:
+  .../assets/usd/SO-ARM101-USD.usd
+```
+해결: `sudo apt install git-lfs && git lfs install && git lfs pull`
+(로컬 처리 완료 — SO-ARM101 23MB 등 정상 수신. **5090은 미처리**, sim 학습 착수 전 필요)
 
 ### Phase 1 — sim 데이터 수집 (로컬)
 - 워크숍 `lerobot_agent`(sim teleop): **실물 SO-101 리더암을 sim 입력으로 사용**
