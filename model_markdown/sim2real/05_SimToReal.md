@@ -16,8 +16,28 @@
 | 태스크 | `Lerobot-So101-Teleop-Vials-To-Rack(-DR)` → 이후 T1 유사 환경 | D1. 워크숍이 씬·DR·평가 환경([-Eval/-DR-Eval](https://github.com/isaac-sim/Sim-to-Real-SO-101-Workshop))을 완비 |
 | 데이터 수집 | 실물 리더암 teleop, 50ep, DR 켬 | D3·D4. 리더암 teleop은 워크숍 `lerobot_agent` 공식 지원. 50ep은 SmolVLA 논문의 task당 50 demo 프로토콜([arXiv:2506.01844](https://arxiv.org/abs/2506.01844)) 및 우리 실기 v2/v3와 규모 일치(비교 가능성). DR은 sim-to-real 전이의 표준 처방([Tobin et al. 2017, arXiv:1703.06907](https://arxiv.org/abs/1703.06907)) |
 | 데이터 포맷 | LeRobot 포맷 (sim 출력) | 워크숍 `lerobot_push_dataset` 제공 → **4모델 기존 학습 파이프라인 재사용** (선정의 결정 근거) |
-| 수집 규칙 | 성공 종결·idle 최소화·위치 다양화 | **자체 실측**: GR00T idle 어트랙터([report/GR00T_report.md](../../report/GR00T_report.md) §3 — 시연 초반 2.8s 정지가 배포 시 정지 모드로 복제됨), SmolVLA 위치 다양화 효과([report/SmolVLA_report.md](../../report/SmolVLA_report.md) §11 — T2 v3 개선) |
+| 수집 규칙 | 성공 종결·idle 최소화·위치 다양화 **+ 교정(recovery) 시연 포함** | **자체 실측**: GR00T idle 어트랙터([report/GR00T_report.md](../../report/GR00T_report.md) §3), SmolVLA 위치 다양화 효과([report/SmolVLA_report.md](../../report/SmolVLA_report.md) §11), **GR00T covariate shift 규명**(동 §3.2 — 아래 0.1.1) |
 | 전이 실험 | zero-shot + co-training 둘 다 | D6. sim+real co-training이 실데이터 단독 대비 평균 +38% ([arXiv:2503.24361](https://arxiv.org/abs/2503.24361)) |
+
+### 0.1.1 ⚠️ 교정(recovery) 시연 — 실기 실패에서 도출된 최우선 수집 규칙
+
+**배경**: GR00T 실기 FT 4회 반복 끝에, 실패 원인이 모델·학습설정이 아니라 **데이터에 교정
+예시가 0건**이라는 점으로 확정됐다([report/GR00T_report.md](../../report/GR00T_report.md) §3.2).
+실기 50ep는 전부 시연자가 정확히 수행한 깨끗한 성공 시연이라, 배포 중 작은 이탈이 생기면
+학습 분포 밖으로 나가 **오차가 가속 발산**한다(wrist 뷰 오프셋 vs 명령 pan 상관계수 **-0.86**).
+행동복제의 고전적 실패인 covariate shift([DAgger, arXiv:1011.0686](https://arxiv.org/abs/1011.0686)).
+
+**따라서 sim 수집에서는 처음부터 교정 시연을 섞는다** (4모델 공통 데이터이므로 전 모델이 수혜):
+
+- **구성 비율(초안)**: 정상 성공 시연 ~70% / **교정 시연 ~30%**
+- **교정 시연 방법**: 에피소드 시작 시 로봇을 **목표에서 의도적으로 어긋난 자세**(좌/우로
+  15~40°, 높이 편차 포함)에 두고 시작 → 리더암으로 되돌아와 정렬 → 파지·배치 → 성공 종결
+- **핵심**: 실패로 끝내지 말 것. "어긋남 → 교정 → 성공"의 **성공 종결 궤적**이어야 한다
+- **sim의 이점**: 실기에서는 어긋난 자세를 매번 손으로 만들어야 해 번거롭고 재현성이 낮지만,
+  sim은 **초기 자세를 시드로 무작위화**해 자동·대량 생성 가능. 이것이 sim 경로의 실질적 이점 중 하나
+- **검증 지표**: 학습 후 `probe_swap_images.py`류 프로브로 "어긋난 관측에서 교정 방향을
+  명령하는가"(상관계수 부호)를 **측정 전 게이트**로 확인 — 실기에서 -0.86이었던 값이
+  양수로 바뀌어야 한다
 
 ### 0.2 데이터 흐름
 
