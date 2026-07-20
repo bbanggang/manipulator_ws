@@ -1,7 +1,7 @@
 # S2. SmolVLA — Sim-to-Real (FT, 로컬 5070Ti)
 
 > **역할**: 경량 VLA의 sim 데이터 FT 유효성 + 사전학습(SO-100)이 sim 도메인 갭을 완충하는지 검증.
-> 상위 계획: [../05_SimToReal.md](../05_SimToReal.md) | 실기 결과: [report/SmolVLA_report.md](../../report/SmolVLA_report.md) (SR ~20% 천장)
+> 상위 계획: [../05_SimToReal.md](05_SimToReal.md) | 실기 결과: [report/SmolVLA_report.md](../../report/SmolVLA_report.md) (SR ~20% 천장)
 
 ## 모델 개요 (sim 경로)
 

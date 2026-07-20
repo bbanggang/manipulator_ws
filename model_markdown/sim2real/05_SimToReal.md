@@ -1,6 +1,6 @@
 # 05. Sim-to-Real — 4모델별 구체 실행 계획 (Isaac Sim, SO-101)
 
-> 확정 결정(D1~D7, 2026-07-20 — [setup/sim/README.md](../setup/sim/README.md) §3) 기반의
+> 확정 결정(D1~D7, 2026-07-20 — [setup/sim/README.md](../../setup/sim/README.md) §3) 기반의
 > **모델별 실행 절차서**. 각 결정·설계의 근거(웹/논문/자체 실측)를 명시한다.
 > 전제: GR00T 실기 완결 후 착수(D7). 실기 실험에서 확정된 처방을 sim에도 선적용한다.
 
@@ -16,7 +16,7 @@
 | 태스크 | `Lerobot-So101-Teleop-Vials-To-Rack(-DR)` → 이후 T1 유사 환경 | D1. 워크숍이 씬·DR·평가 환경([-Eval/-DR-Eval](https://github.com/isaac-sim/Sim-to-Real-SO-101-Workshop))을 완비 |
 | 데이터 수집 | 실물 리더암 teleop, 50ep, DR 켬 | D3·D4. 리더암 teleop은 워크숍 `lerobot_agent` 공식 지원. 50ep은 SmolVLA 논문의 task당 50 demo 프로토콜([arXiv:2506.01844](https://arxiv.org/abs/2506.01844)) 및 우리 실기 v2/v3와 규모 일치(비교 가능성). DR은 sim-to-real 전이의 표준 처방([Tobin et al. 2017, arXiv:1703.06907](https://arxiv.org/abs/1703.06907)) |
 | 데이터 포맷 | LeRobot 포맷 (sim 출력) | 워크숍 `lerobot_push_dataset` 제공 → **4모델 기존 학습 파이프라인 재사용** (선정의 결정 근거) |
-| 수집 규칙 | 성공 종결·idle 최소화·위치 다양화 | **자체 실측**: GR00T idle 어트랙터([report/GR00T_report.md](../report/GR00T_report.md) §3 — 시연 초반 2.8s 정지가 배포 시 정지 모드로 복제됨), SmolVLA 위치 다양화 효과([report/SmolVLA_report.md](../report/SmolVLA_report.md) §11 — T2 v3 개선) |
+| 수집 규칙 | 성공 종결·idle 최소화·위치 다양화 | **자체 실측**: GR00T idle 어트랙터([report/GR00T_report.md](../../report/GR00T_report.md) §3 — 시연 초반 2.8s 정지가 배포 시 정지 모드로 복제됨), SmolVLA 위치 다양화 효과([report/SmolVLA_report.md](../../report/SmolVLA_report.md) §11 — T2 v3 개선) |
 | 전이 실험 | zero-shot + co-training 둘 다 | D6. sim+real co-training이 실데이터 단독 대비 평균 +38% ([arXiv:2503.24361](https://arxiv.org/abs/2503.24361)) |
 
 ### 0.2 데이터 흐름
@@ -45,10 +45,10 @@
 
 | 모델 | 페이지 |
 |---|---|
-| ACT | [sim2real/01_ACT_sim.md](sim2real/01_ACT_sim.md) |
-| SmolVLA | [sim2real/02_SmolVLA_sim.md](sim2real/02_SmolVLA_sim.md) |
-| π0 | [sim2real/03_Pi0_sim.md](sim2real/03_Pi0_sim.md) |
-| GR00T | [sim2real/04_GR00T_sim.md](sim2real/04_GR00T_sim.md) |
+| ACT | [sim2real/01_ACT_sim.md](01_ACT_sim.md) |
+| SmolVLA | [sim2real/02_SmolVLA_sim.md](02_SmolVLA_sim.md) |
+| π0 | [sim2real/03_Pi0_sim.md](03_Pi0_sim.md) |
+| GR00T | [sim2real/04_GR00T_sim.md](04_GR00T_sim.md) |
 
 ---
 
@@ -64,7 +64,7 @@
 **모델별 유의점과 근거**
 - ACT는 언어 미사용·단일 태스크 암기형이라([Zhao et al. 2023, arXiv:2304.13705](https://arxiv.org/abs/2304.13705))
   **시각 도메인 갭에 가장 취약**할 것으로 예상 — DR 데이터 수집이 특히 중요
-- 실기 실측에서 ACT는 T1 80%로 최강 기준선([report/ACT_report.md](../report/ACT_report.md)) —
+- 실기 실측에서 ACT는 T1 80%로 최강 기준선([report/ACT_report.md](../../report/ACT_report.md)) —
   sim-to-real에서도 기준선 역할
 - 카메라 키: sim 데이터셋의 키를 그대로 학습하므로 별도 매핑 불필요 (ACT는 임의 키 허용)
 
@@ -78,7 +78,7 @@
 **모델별 유의점과 근거**
 - steps를 epoch 기준으로 잡는 이유: **자체 실측** — 동일 steps에서 데이터가 커지면 epoch이
   반감되어 성능 급락(T1 v2 30%), epoch 통제(v3)로 원인 분리함
-  ([report/SmolVLA_report.md](../report/SmolVLA_report.md) §10~11). sim 데이터 프레임 수 확인 후 steps 계산
+  ([report/SmolVLA_report.md](../../report/SmolVLA_report.md) §10~11). sim 데이터 프레임 수 확인 후 steps 계산
 - FT 레시피 근거: SmolVLA 논문 50-demo 프로토콜 + 커뮤니티 SO-101 사례(ggando.com, RTX3090/batch64/20k)
 - 언어 명령은 sim 태스크 문장으로 고정(단일 문장 — 실기와 동일 관례)
 
@@ -93,7 +93,7 @@
 
 **모델별 유의점과 근거**
 - expert-only 선택 근거: **자체 실측** — LoRA(1.4M)는 loss 0.074 정체·배회, expert-only(578M)는
-  0.04까지 하락하며 부분 인식·접근 도달 ([report/Pi0_report.md](../report/Pi0_report.md) §3~4).
+  0.04까지 하락하며 부분 인식·접근 도달 ([report/Pi0_report.md](../../report/Pi0_report.md) §3~4).
   π0.5 공식 문서도 동일 방식을 메모리 절감 경로로 권장([HF docs pi05](https://huggingface.co/docs/lerobot/pi05))
 - **주의**: 실기에서 π0는 frozen vision으로 과제 완결에 미달했음 — sim에서도 동일 한계 가능성.
   sim 결과가 나쁘면 π0는 "sim에서도 재현된 한계"로 기록하고 무리한 튜닝은 생략 (실기 보류와 일관)
@@ -112,7 +112,7 @@
 
 **모델별 유의점과 근거**
 - tune_visual 근거: **자체 실측** — vision freeze 시 큐브 위치 무관 모드 고정(pan -77),
-  open-loop는 완벽하나 closed-loop 시각 그라운딩 부재 ([report/GR00T_report.md](../report/GR00T_report.md) §3)
+  open-loop는 완벽하나 closed-loop 시각 그라운딩 부재 ([report/GR00T_report.md](../../report/GR00T_report.md) §3)
 - 유효 batch 근거: batch 4×10k(1.6 epoch)는 loss 0.041로 학습부족 — 유효 32(accum 8) 필요 (동 §3 v3/v4)
 - 튜토리얼 레시피 근거: [HF 블로그 GR00T-N1.5 SO-101 튜닝](https://huggingface.co/blog/nvidia/gr00t-n1-5-so101-tuning)
   (10k steps, so100_dualcam) + 워크숍 [교육 문서](https://docs.nvidia.com/learning/physical-ai/sim-to-real-so-101/latest/index.html)

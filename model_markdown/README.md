@@ -29,7 +29,7 @@
 | 2 | [02_SmolVLA.md](02_SmolVLA.md) | SmolVLA (450M) | Zero-shot | ZS 3종 중 최고 기대 (SO-ARM 계열 사전학습) |
 | 3 | [03_Pi0.md](03_Pi0.md) | π0 (3B) | Zero-shot | 중간 — jerky motion 주의 |
 | 4 | [04_GR00T_N1.5.md](04_GR00T_N1.5.md) | GR00T N1.5 (3B) | Zero-shot | OOD로 최저 예상 — 파이프라인 검증이 주목적 |
-| 5 | [05_SimToReal.md](05_SimToReal.md) | (4모델 공통) | Sim-to-Real | Isaac Sim 학습·평가 → 실기 전이 + co-training (2026-07-20 확정 계획) |
+| 5 | [05_SimToReal.md](sim2real/05_SimToReal.md) | (4모델 공통) | Sim-to-Real | Isaac Sim 학습·평가 → 실기 전이 + co-training (2026-07-20 확정 계획) |
 |   | [sim2real/](sim2real/) | 모델별 개별 페이지 | Sim-to-Real | S1~S4: 절차 체크박스·게이트·결과 기록표 |
 
 ## 3. 하드웨어 & 공통 환경

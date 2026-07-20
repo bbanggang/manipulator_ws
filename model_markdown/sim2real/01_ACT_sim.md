@@ -2,7 +2,7 @@
 
 > **역할**: sim-to-real 기준선. 실기 기준선(T1 80%)과 동일하게 from-scratch 학습이 sim 데이터로도
 > 성립하는지, 그리고 **시각 도메인 갭에 가장 취약할 것**이라는 가설(언어·사전학습 없음)을 검증.
-> 상위 계획: [../05_SimToReal.md](../05_SimToReal.md) | 실기 결과: [report/ACT_report.md](../../report/ACT_report.md)
+> 상위 계획: [../05_SimToReal.md](05_SimToReal.md) | 실기 결과: [report/ACT_report.md](../../report/ACT_report.md)
 
 ## 모델 개요 (sim 경로)
 
