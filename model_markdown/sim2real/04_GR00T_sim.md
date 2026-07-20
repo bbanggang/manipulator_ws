@@ -2,7 +2,7 @@
 
 > **역할**: 워크숍이 공식 지원하는 유일한 모델 — sim 경로의 기준 구현체이자, NVIDIA가 설계한
 > sim-to-real 파이프라인의 성능 상한 확인. **sim은 워크숍 최신 스택, 실기 벤치마크는 N1.5**(D2).
-> 상위 계획: [../05_SimToReal.md](05_SimToReal.md) | 실기 결과: [report/GR00T_report.md](../../report/GR00T_report.md)
+> 상위 계획: [05_SimToReal.md](05_SimToReal.md) | 실기 결과: [report/GR00T_report.md](../../report/GR00T_report.md)
 
 ## 모델 개요 (sim 경로)
 

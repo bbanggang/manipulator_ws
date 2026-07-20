@@ -2,7 +2,7 @@
 
 > **역할**: 실기에서 "부분 인식·접근, 완결 미달"로 보류된 π0가 **sim의 통제된 환경에서는
 > 완결까지 가는지** 검증 — 실기 한계가 데이터/도메인 문제인지 모델 계열 한계인지 분리.
-> 상위 계획: [../05_SimToReal.md](05_SimToReal.md) | 실기 결과: [report/Pi0_report.md](../../report/Pi0_report.md) (보류)
+> 상위 계획: [05_SimToReal.md](05_SimToReal.md) | 실기 결과: [report/Pi0_report.md](../../report/Pi0_report.md) (보류)
 
 ## 모델 개요 (sim 경로)
 
