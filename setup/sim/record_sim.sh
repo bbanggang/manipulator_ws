@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Isaac Sim 시연 데이터 수집 (리더암 teleop → LeRobot 포맷)
 #
-# 사용법: ./setup/sim/record_sim.sh              # DR 태스크(본 수집용)
+# 사용법: ./setup/sim/record_sim.sh              # 정상 시연(고정 시작, DR)
+#         ./setup/sim/record_sim.sh recovery     # 교정 시연(관절별 무작위 시작, DR)
 #         ./setup/sim/record_sim.sh nodr         # DR 없음(디버그용)
 #         ./setup/sim/record_sim.sh dr zero      # 녹화 없이 동작만 확인(zero_agent)
 #
@@ -10,9 +11,10 @@
 #
 # ⚠️ 수집 규칙 (model_markdown/sim2real/05_SimToReal.md §0.1.1):
 #   - 성공으로 끝나는 에피소드만 저장, 녹화 시작 즉시 동작 개시(idle 금지)
-#   - **정상 ~70% / 교정(recovery) ~30%**: 교정 시연은 팔을 목표에서 일부러
-#     어긋나게 둔 뒤 되돌아와 정렬·파지·배치까지 성공으로 종결한다
+#   - **정상 ~70% / 교정(recovery) ~30%**: 교정 모드는 시작 자세가 관절별로 무작위화되어
+#     "어긋난 상태"에서 시작 — 그대로 되돌아와 정렬·파지·배치까지 성공으로 종결한다
 #     (실기 GR00T 실패의 근본 원인이 교정 시연 부재였음 — report/GR00T_report.md §3.2)
+#   - 예: 50ep 목표면 정상 35ep(기본 실행) + 교정 15ep(recovery 인자)
 #
 # ⚠️ 함정 기록 (setup/sim/README.md):
 #   - docker/env·source 마운트 누락 시 컨테이너가 아무 출력 없이 exit 1
@@ -27,6 +29,10 @@ cd "$WORKSHOP"
 TASK="Lerobot-So101-Teleop-Vials-To-Rack-DR"
 [ "${1:-}" = "nodr" ] && TASK="Lerobot-So101-Teleop-Vials-To-Rack"
 
+# 교정 모드: 시작 자세 관절별 무작위화 (SIM_RECOVERY=1을 컨테이너로 전달)
+RECOVERY=0
+[ "${1:-}" = "recovery" ] && RECOVERY=1 && echo "▶ 교정(recovery) 모드: 시작 자세 무작위화"
+
 # GUI 필수 — teleop은 화면을 보며 조작해야 함
 export DISPLAY="${DISPLAY:-:1}"
 if ! xhost >/dev/null 2>&1; then
@@ -35,6 +41,9 @@ if ! xhost >/dev/null 2>&1; then
   exit 1
 fi
 xhost +local: >/dev/null
+
+# 이전 크래시로 남은 컨테이너 정리 (--rm이어도 비정상 종료 시 잔존)
+sg docker -c "docker rm -f teleop" >/dev/null 2>&1 || true
 
 mkdir -p "$WS/logs" "$WORKSHOP/outputs" "$WORKSHOP/datasets"
 LOG="$WS/logs/sim_record_$(date +%Y%m%d_%H%M%S).log"
@@ -55,7 +64,7 @@ echo "로그:   $LOG"
 echo
 
 exec sg docker -c "docker run --name teleop --rm -it --privileged --gpus all \
-  -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y -e DISPLAY=$DISPLAY --network=host \
+  -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y -e DISPLAY=$DISPLAY -e SIM_RECOVERY=$RECOVERY --network=host \
   -v /dev:/dev -v /run/udev:/run/udev:ro \
   -v $HOME/.Xauthority:/root/.Xauthority \
   -v /tmp/.X11-unix:/tmp/.X11-unix \

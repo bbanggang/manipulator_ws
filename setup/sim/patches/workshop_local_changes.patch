@@ -1,0 +1,192 @@
+diff --git a/source/sim_to_real_so101/mdp/resets.py b/source/sim_to_real_so101/mdp/resets.py
+index 8257944..b2d82c9 100644
+--- a/source/sim_to_real_so101/mdp/resets.py
++++ b/source/sim_to_real_so101/mdp/resets.py
+@@ -30,6 +30,48 @@ from isaacsim.core.prims import XFormPrim
+ 
+ 
+ 
++def reset_joints_by_offset_per_joint(
++    env,
++    env_ids: torch.Tensor,
++    position_range_per_joint: dict[str, tuple[float, float]],
++    velocity_range: tuple[float, float] = (0.0, 0.0),
++    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
++):
++    """관절별로 서로 다른 오프셋 범위를 적용해 시작 자세를 무작위화한다 (로컬 추가 2026-07-21).
++
++    표준 `reset_joints_by_offset`은 모든 관절에 같은 범위를 주지만, 교정(recovery) 데이터
++    수집에는 관절별 차등이 필요하다:
++      - Rotation(pan)/Pitch/Elbow: 크게 흔들어 "어긋난 시작"을 만든다
++      - Jaw(gripper): 파지 동작이므로 시작부터 흔들지 않는다(범위 0)
++    목적: 실기 GR00T 실패의 근본 원인이었던 '학습에 없는 어긋난 상태에서의 교정 부재'를
++    sim에서 자동·대량으로 채운다 (report/GR00T_report.md §3.2, sim2real/05 §0.1.1).
++
++    범위 단위는 라디안(관절 오프셋). 지정하지 않은 관절은 오프셋 0.
++    """
++    asset: Articulation = env.scene[asset_cfg.name]
++
++    joint_pos = asset.data.default_joint_pos[env_ids].clone()
++    joint_vel = asset.data.default_joint_vel[env_ids].clone()
++
++    # 관절 이름 → 인덱스 매핑으로 각 관절에 개별 범위 적용
++    for joint_name, (lo, hi) in position_range_per_joint.items():
++        j_ids, _ = asset.find_joints(joint_name)
++        if len(j_ids) == 0:
++            continue
++        j = j_ids[0]
++        offset = math_utils.sample_uniform(lo, hi, (len(env_ids),), joint_pos.device)
++        joint_pos[:, j] += offset
++
++    if velocity_range != (0.0, 0.0):
++        joint_vel += math_utils.sample_uniform(*velocity_range, joint_vel.shape, joint_vel.device)
++
++    # 관절 한계로 클램프 (물리적으로 불가능한 자세 방지)
++    limits = asset.data.soft_joint_pos_limits[env_ids]
++    joint_pos = joint_pos.clamp_(limits[..., 0], limits[..., 1])
++
++    asset.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=env_ids)
++
++
+ # Robot color palette based on WowRobo and Seeed Studio offerings
+ ROBOT_COLORS = {
+     "orange": (0.876, 0.317, 0.132),
+diff --git a/source/sim_to_real_so101/tasks/so101_env_cfg.py b/source/sim_to_real_so101/tasks/so101_env_cfg.py
+index 2b6c58d..67e1439 100644
+--- a/source/sim_to_real_so101/tasks/so101_env_cfg.py
++++ b/source/sim_to_real_so101/tasks/so101_env_cfg.py
+@@ -33,6 +33,7 @@ from sim_to_real_so101.mdp import (
+     JointPositionActionCfg,
+     joint_pos,
+     reset_joints_by_offset,
++    reset_joints_by_offset_per_joint,
+     randomize_robot_color,
+     ee_frame_state,
+     joint_pos_rel,
+@@ -40,6 +41,21 @@ from sim_to_real_so101.mdp import (
+ 
+ assets_path = os.path.dirname(os.path.abspath(assets.__file__))
+ 
++# 교정(recovery) 데이터 수집 모드 — 환경변수로 토글 (로컬 추가 2026-07-21).
++# SIM_RECOVERY=1 이면 시작 자세를 관절별로 무작위화해 "어긋난 상태"에서 시작한다.
++# 정상 시연(기본, SIM_RECOVERY 미설정)은 고정 시작. 두 모드를 같은 명령으로 전환하며
++# 정상 ~70% / 교정 ~30% 비율로 수집(sim2real/05 §0.1.1). 단위: 라디안.
++_RECOVERY_MODE = os.environ.get("SIM_RECOVERY", "0") == "1"
++# rad: pan/pitch/elbow는 크게(±0.35rad≈±20°), 손목은 중간, Jaw(그리퍼)는 0(파지용이라 고정)
++_RECOVERY_RANGE = {
++    "Rotation": (-0.35, 0.35),
++    "Pitch": (-0.25, 0.25),
++    "Elbow": (-0.25, 0.25),
++    "Wrist_Pitch": (-0.20, 0.20),
++    "Wrist_Roll": (-0.15, 0.15),
++    "Jaw": (0.0, 0.0),
++}
++
+ 
+ @configclass
+ class LerobotSo101BaseSceneCfg(InteractiveSceneCfg):
+@@ -109,25 +125,37 @@ class EventCfg:
+     """Configuration for events."""
+ 
+     # Reset robot position
+-    reset_robot_position = EventTerm(
+-        func=reset_joints_by_offset,
+-        mode="reset",
+-        params={
+-            "asset_cfg": SceneEntityCfg(
+-                "robot",
+-                joint_names=[
+-                    "Rotation",
+-                    "Pitch",
+-                    "Elbow",
+-                    "Wrist_Pitch",
+-                    "Wrist_Roll",
+-                    "Jaw",
+-                ],
+-            ),
+-            "position_range": (0, 0),
+-            "velocity_range": (0, 0),
+-        },
+-    )
++    # 기본: 고정 시작(정상 시연). SIM_RECOVERY=1 이면 관절별 무작위 시작(교정 시연).
++    if _RECOVERY_MODE:
++        reset_robot_position = EventTerm(
++            func=reset_joints_by_offset_per_joint,
++            mode="reset",
++            params={
++                "asset_cfg": SceneEntityCfg("robot"),
++                "position_range_per_joint": _RECOVERY_RANGE,
++                "velocity_range": (0.0, 0.0),
++            },
++        )
++    else:
++        reset_robot_position = EventTerm(
++            func=reset_joints_by_offset,
++            mode="reset",
++            params={
++                "asset_cfg": SceneEntityCfg(
++                    "robot",
++                    joint_names=[
++                        "Rotation",
++                        "Pitch",
++                        "Elbow",
++                        "Wrist_Pitch",
++                        "Wrist_Roll",
++                        "Jaw",
++                    ],
++                ),
++                "position_range": (0, 0),
++                "velocity_range": (0, 0),
++            },
++        )
+ 
+     reset_set_robot_visual_material = EventTerm(
+         func=randomize_robot_color,
+diff --git a/source/sim_to_real_so101/utils/lerobot_recorder.py b/source/sim_to_real_so101/utils/lerobot_recorder.py
+index 82a4df2..0e2869b 100644
+--- a/source/sim_to_real_so101/utils/lerobot_recorder.py
++++ b/source/sim_to_real_so101/utils/lerobot_recorder.py
+@@ -125,7 +125,12 @@ class LeRobotRecorder:
+         self.num_recorded_episodes = 0
+ 
+         self.device = device
+-        self.capcity = 2 * 60 * self.fps
++        # NOTE(로컬 수정 2026-07-20): 원본은 120초 고정(2*60*fps=3600프레임).
++        # 카메라 1대당 3600×480×640×3B = 3.09GiB를 GPU에 선할당하므로 2캠이면 6.2GiB —
++        # 16GB GPU(5070 Ti)에서는 Isaac Sim(~5.3GiB)과 합쳐 여유가 없다.
++        # 우리 T1 프로토콜은 에피소드 60초 제한이고 실측 시연은 ~20초라 60초면 3배 여유.
++        # 더 긴 에피소드가 필요하면 SIM_RECORD_SECONDS로 조정(초과분은 프레임이 버려짐).
++        self.capcity = int(os.environ.get("SIM_RECORD_SECONDS", "60")) * self.fps
+         self.current_frame = 0
+ 
+         self.action_buffers_tensor = None
+@@ -314,10 +319,15 @@ class LeRobotRecorder:
+ 
+             self.action_buffers_tensor = None
+             self.observation_buffer_tensor = None
+-            self.rgb_buffer_tensor = {}
++            # NOTE(로컬 수정 2026-07-20): 원본은 `self.rgb_buffer_tensor`(단수) — 오타로
++            # 실제 GPU 버퍼(`rgb_buffer_tensors`, 복수)가 해제되지 않아 에피소드마다 누수됐다.
++            # 다음 에피소드의 allocate_buffers()가 해제 전에 새로 할당하므로 순간 2배
++            # (카메라 2대 × 3.09GiB × 2 = 12.4GiB)가 필요해져 16GB GPU에서 OOM.
++            self.rgb_buffer_tensors = {}
+             self.depth_buffer_tensors = {}
+             self.instance_id_seg_buffers_tensors = {}
+             self.current_frame = 0
++            torch.cuda.empty_cache()  # 해제한 메모리를 드라이버에 반환
+             print("[INFO]: Cleared buffers")
+ 
+     def cancel_recording(self, event: Event):
+@@ -325,8 +335,11 @@ class LeRobotRecorder:
+             print(f"[INFO]: Cancelled recording.")
+             self.action_buffers_tensor = None
+             self.observation_buffer_tensor = None
+-            self.rgb_buffer_tensor = {}
++            self.rgb_buffer_tensors = {}  # 로컬 수정: 단수형 오타(§save_episode와 동일 버그)
++            self.depth_buffer_tensors = {}
++            self.instance_id_seg_buffers_tensors = {}
+             self.current_frame = 0
++            torch.cuda.empty_cache()
+             print("[INFO]: Cleared buffers")
+             print(f"[INFO]: Episode cancelled.")
+ 
