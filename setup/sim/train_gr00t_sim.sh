@@ -34,7 +34,7 @@ docker run -d --name gr00t-train --rm --gpus all --network host --ipc=host \
     --output-dir /workspace/models/$OUT \
     --save-steps 5000 --save-total-limit 5 --max-steps 20000 \
     --warmup-ratio 0.05 --weight-decay 1e-5 --learning-rate 1e-4 \
-    --global-batch-size 64 --gradient-accumulation-steps 32 \
+    --global-batch-size 2 --gradient-accumulation-steps 32 \
     --color-jitter-params brightness 0.3 contrast 0.4 saturation 0.5 hue 0.08 \
     --dataloader-num-workers 4"
 
