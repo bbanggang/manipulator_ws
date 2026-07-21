@@ -23,10 +23,11 @@ docker run -d --name gr00t-train --rm --gpus all --network host \
   -e HF_TOKEN="$HF_TOKEN_VAL" -e PYTHONUNBUFFERED=1 \
   -v "$DATA_DIR:/data" \
   -v "$HOME/models:/workspace/models" \
+  -v "$HOME/hf_cache_container:/root/.cache/huggingface" \
   real-robot \
   bash -c "cd /Isaac-GR00T && python3 gr00t/experiment/launch_finetune.py \
     --base-model-path nvidia/GR00T-N1.6-3B \
-    --dataset-path /data/vials75 \
+    --dataset-path /data/sreetz-nv/so101_teleop_vials_rack_left \
     --modality-config-path examples/SO100/so100_config.py \
     --embodiment-tag NEW_EMBODIMENT \
     --num-gpus 1 \
