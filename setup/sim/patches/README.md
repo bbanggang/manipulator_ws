@@ -7,7 +7,7 @@
 
 ## workshop_local_changes.patch (2026-07-21)
 
-3개 파일 수정:
+2개 파일 수정 (recorder VRAM 버그 + 참고용 reset 함수):
 
 ### 1. `utils/lerobot_recorder.py` — VRAM 버그 2건
 - **버퍼 해제 오타**: `save_episode`/`cancel_recording`이 `self.rgb_buffer_tensor`(단수)를
@@ -17,13 +17,12 @@
 - **버퍼 용량**: 120초 고정(3600프레임/캠=3.09GiB, 2캠 6.2GiB)을 `SIM_RECORD_SECONDS`
   (기본 60)로 조정 가능하게 — 6.18→3.09GiB.
 
-### 2. `mdp/resets.py` — 관절별 시작자세 무작위화 함수 추가
-- `reset_joints_by_offset_per_joint()`: 표준 함수와 달리 관절별로 다른 오프셋 범위 적용.
-  교정(recovery) 데이터 수집용 — pan/pitch/elbow는 크게, Jaw(그리퍼)는 0.
-
-### 3. `tasks/so101_env_cfg.py` — 교정 모드 토글
-- 환경변수 `SIM_RECOVERY=1`이면 시작 자세를 관절별 무작위화(교정 시연), 아니면 고정(정상 시연).
-- 범위: Rotation ±0.35rad, Pitch/Elbow ±0.25, Wrist ±0.15~0.20, Jaw 0.
+### 2. `mdp/resets.py` — 관절별 시작자세 무작위화 함수 (참고용, 미사용)
+- `reset_joints_by_offset_per_joint()`: 관절별로 다른 오프셋 범위 적용.
+- ⚠️ **teleop 수집에는 무효**: teleop이 절대 위치 추종이라 리셋 오프셋이 첫 스텝에
+  리더암 자세로 덮어써짐(2026-07-21 실측 확인). `tasks/so101_env_cfg.py`의 토글 시도는
+  **원복**했다(패치에 미포함). 교정 데이터는 사람이 리더암으로 수동 생성한다.
+  이 함수는 RL/autonomous rollout에서 재사용 가능성이 있어 남겨둠.
 
 근거: 실기 GR00T 실패의 근본 원인이 covariate shift(교정 시연 부재)였음
 — report/GR00T_report.md §3.2, model_markdown/sim2real/05_SimToReal.md §0.1.1.
