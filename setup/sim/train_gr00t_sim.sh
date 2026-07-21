@@ -19,12 +19,12 @@ HF_TOKEN_VAL="$(cat $HOME/.cache/huggingface/token 2>/dev/null || true)"
 
 docker rm -f gr00t-train 2>/dev/null || true
 
-docker run -d --name gr00t-train --rm --gpus all --network host \
-  -e HF_TOKEN="$HF_TOKEN_VAL" -e PYTHONUNBUFFERED=1 \
+docker run -d --name gr00t-train --rm --gpus all --network host --ipc=host \
+  -e HF_TOKEN="$HF_TOKEN_VAL" -e PYTHONUNBUFFERED=1 -e PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
   -v "$DATA_DIR:/data" \
   -v "$HOME/models:/workspace/models" \
   -v "$HOME/hf_cache_container:/root/.cache/huggingface" \
-  real-robot \
+  real-robot-train \
   bash -c "cd /Isaac-GR00T && python3 gr00t/experiment/launch_finetune.py \
     --base-model-path nvidia/GR00T-N1.6-3B \
     --dataset-path /data/sreetz-nv/so101_teleop_vials_rack_left \
@@ -34,7 +34,7 @@ docker run -d --name gr00t-train --rm --gpus all --network host \
     --output-dir /workspace/models/$OUT \
     --save-steps 5000 --save-total-limit 5 --max-steps 20000 \
     --warmup-ratio 0.05 --weight-decay 1e-5 --learning-rate 1e-4 \
-    --global-batch-size 64 --gradient-accumulation-steps 16 \
+    --global-batch-size 64 --gradient-accumulation-steps 32 \
     --color-jitter-params brightness 0.3 contrast 0.4 saturation 0.5 hue 0.08 \
     --dataloader-num-workers 4"
 
