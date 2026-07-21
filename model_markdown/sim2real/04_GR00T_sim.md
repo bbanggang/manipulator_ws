@@ -55,7 +55,24 @@
 
 ## 결과 기록
 
-### Sim 평가
+### 기준선 재현 — 워크숍 사전학습 체크포인트 (옵션 A, 2026-07-21)
+
+파이프라인 검증 + 공개 기준선 재현을 위해, 재학습 없이 워크숍 사전학습 체크포인트를 그대로 sim 평가:
+- 체크포인트: `aravindhs-NV/grootn16-finetune_sreetz-so101_teleop_vials_rack_left/checkpoint-10000`
+  (**N1.6**, sim-only 75ep 학습 — `sreetz-nv/so101_teleop_vials_rack_left`)
+- 실행: `setup/sim/sim_eval_gr00t.sh grootn16_sim75/checkpoint-10000 10 eval` (5090 headless)
+
+| 지표 | 값 |
+|---|---|
+| **sim SR (Eval, DR 없음)** | **6/10 = 60%** (랙 배치 성공 6회 확정) |
+| 워크숍 공식 기대치 | 50~70% → **범위 정중앙, 재현 성공** |
+| 누적 SR 추이 | ep1~10: 0→100→100→66.7→75→60→50→57→62.5→**60%** |
+
+**의의**: ① real-robot 추론 서버(N1.6 로드) + teleop-docker 평가 클라이언트 + Isaac Sim
+렌더링 end-to-end 파이프라인 검증 완료 ② 우리 자체 데이터 학습 결과를 해석할 **대조군 확보**.
+빌드 함정(torch nightly 드리프트)은 `setup/sim/patches/dockerfile_blackwell_flashattn.patch`로 해결.
+
+### Sim 평가 (우리 자체 수집 데이터 학습본 — 예정)
 | 환경 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | SR |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Eval (DR 없음) | | | | | | | | | | | /10 |
