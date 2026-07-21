@@ -75,6 +75,7 @@
 | SmolVLA | [sim2real/02_SmolVLA_sim.md](02_SmolVLA_sim.md) |
 | π0 | [sim2real/03_Pi0_sim.md](03_Pi0_sim.md) |
 | GR00T | [sim2real/04_GR00T_sim.md](04_GR00T_sim.md) |
+| **실행 기록(진행 로그)** | [sim2real/06_실행기록.md](06_실행기록.md) — 실제 실행하며 겪은 결정·함정·수치 시간순 |
 
 ---
 
