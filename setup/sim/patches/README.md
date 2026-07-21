@@ -26,3 +26,21 @@
 
 근거: 실기 GR00T 실패의 근본 원인이 covariate shift(교정 시연 부재)였음
 — report/GR00T_report.md §3.2, model_markdown/sim2real/05_SimToReal.md §0.1.1.
+
+## dockerfile_blackwell_flashattn.patch (2026-07-21)
+
+`docker/real/Dockerfile.blackwell` (real-robot 추론 컨테이너) 빌드 실패 수정.
+
+**증상**: flash-attn 소스 컴파일 중 `#error C++20 or later compatible compiler is
+required to use ATen` → 빌드 실패.
+
+**원인**: Dockerfile이 torch를 **버전 고정 없이** `--pre ... nightly/cu130`으로 설치하는데,
+그 사이 nightly가 `2.14.0.dev`(C++20 요구)로 드리프트. flash-attn 2.7.4 소스 빌드는
+`-std=c++17`이라 충돌. (Isaac-GR00T 자체는 torch==2.7.1+cu128을 핀하지만 Dockerfile이 덮어씀)
+
+**수정**: n1d5에서 검증한 조합으로 교체 —
+- torch를 `2.8.0+cu128`로 (Blackwell sm_120 지원, cu130 nightly 불필요)
+- flash-attn을 **소스 컴파일 대신 사전빌드 휠**(v2.8.3 cp310/torch2.8/cu12)로
+
+적용: `cd ~/Sim-to-Real-SO-101-Workshop && patch -p0 docker/real/Dockerfile.blackwell < dockerfile_blackwell_flashattn.patch`
+(원본은 Dockerfile.blackwell.orig로 백업됨)
