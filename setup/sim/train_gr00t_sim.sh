@@ -13,7 +13,7 @@
 #   (front←external_D455, wrist←ego) 추가함.
 set -euo pipefail
 
-DATA_DIR="${1:-$HOME/sim_data}"           # /vials75 를 포함하는 상위 디렉터리
+DATA_DIR="${1:-$HOME/gr00tn15_ws/sim_data}"           # /vials75 를 포함하는 상위 디렉터리
 OUT="gr00t_vials75_ours"
 HF_TOKEN_VAL="$(cat $HOME/.cache/huggingface/token 2>/dev/null || true)"
 
@@ -22,8 +22,8 @@ docker rm -f gr00t-train 2>/dev/null || true
 docker run -d --name gr00t-train --rm --gpus all --network host --ipc=host \
   -e HF_TOKEN="$HF_TOKEN_VAL" -e PYTHONUNBUFFERED=1 -e PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
   -v "$DATA_DIR:/data" \
-  -v "$HOME/models:/workspace/models" \
-  -v "$HOME/hf_cache_container:/root/.cache/huggingface" \
+  -v "$HOME/gr00tn16_ws/checkpoints:/workspace/models" \
+  -v "$HOME/gr00tn16_ws/hf_cache_container:/root/.cache/huggingface" \
   real-robot-train \
   bash -c "cd /Isaac-GR00T && python3 gr00t/experiment/launch_finetune.py \
     --base-model-path nvidia/GR00T-N1.6-3B \
@@ -39,4 +39,4 @@ docker run -d --name gr00t-train --rm --gpus all --network host --ipc=host \
     --dataloader-num-workers 4"
 
 echo "학습 시작 (컨테이너 gr00t-train). 로그: docker logs -f gr00t-train"
-echo "출력: ~/models/$OUT"
+echo "출력: ~/gr00tn16_ws/checkpoints/$OUT"

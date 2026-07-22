@@ -6,15 +6,15 @@
 #   N1.5는 같은 5090에서 3B FT 성공 이력(도커·shm·CUDA 불일치 없음, host venv 직접 실행).
 #   60% baseline은 이미 사전학습 N1.6 체크포인트로 확보 — 여기선 우리 학습 파이프라인 검증이 목적.
 #
-# 데이터: v3→v2.1 변환한 워크숍 75ep (~/sim_data/sreetz-nv/so101_teleop_vials_rack_left).
+# 데이터: v3→v2.1 변환한 워크숍 75ep (~/gr00tn15_ws/sim_data/sreetz-nv/so101_teleop_vials_rack_left).
 #   meta/modality.json: front←external_D455, wrist←ego (so100_dualcam data-config와 정합).
 # 레시피: 워크숍에 맞춤 — 20k steps, lr 1e-4, 유효 배치 64(batch4×accum16). tune는 N1.5 기본
 #   (projector+diffusion, visual/llm freeze) — 워크숍 체크포인트 tune_visual=False와 근접.
 set -e
 
-DS="${1:-$HOME/sim_data/sreetz-nv/so101_teleop_vials_rack_left}"
+DS="${1:-$HOME/gr00tn15_ws/sim_data/sreetz-nv/so101_teleop_vials_rack_left}"
 STEPS="${2:-20000}"
-OUT=~/gr00t_remote/checkpoints/gr00t_sim_vials75_n15
+OUT=~/gr00tn15_ws/checkpoints/gr00t_sim_vials75_n15
 
 [ -f "$DS/meta/modality.json" ] || { echo "오류: $DS/meta/modality.json 없음"; exit 1; }
 

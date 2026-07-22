@@ -11,7 +11,7 @@
 # 사용법(5090에서): ~/sim_eval_n1d5.sh <CKPT_경로> [num_episodes] [eval|dr]
 set -uo pipefail
 
-CKPT="${1:-$HOME/gr00t_remote/checkpoints/gr00t_sim_vials75_n15/checkpoint-20000}"
+CKPT="${1:-$HOME/gr00tn15_ws/checkpoints/gr00t_sim_vials75_n15/checkpoint-20000}"
 NUM="${2:-10}"
 MODE="${3:-eval}"
 TASK="Lerobot-So101-Teleop-Vials-To-Rack-Eval"
@@ -30,7 +30,7 @@ cleanup; sleep 2
 echo "▶ [1/2] n1d5 추론 서버 기동 (host venv, 모델: $CKPT)"
 cd "$HOME/gr00t_remote/Isaac-GR00T-n1d5"
 source .venv/bin/activate
-export HF_HOME="$HOME/hf_home_airlab"  # airlab 소유(쓰기가능) — 공용 캐시(UID 1001)의 filelock hang 회피
+export HF_HOME="$HOME/gr00tn15_ws/hf_home_airlab"  # airlab 소유(쓰기가능) — 공용 캐시(UID 1001)의 filelock hang 회피
   mkdir -p "$HF_HOME"
 nohup python scripts/inference_service.py --server \
   --model_path "$CKPT" \

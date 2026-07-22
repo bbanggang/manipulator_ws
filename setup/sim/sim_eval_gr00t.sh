@@ -35,7 +35,7 @@ cleanup
 echo "▶ [1/2] GR00T 서버 기동 (real-robot 컨테이너, 모델: $MODEL)"
 docker run -d --name gr00t-srv --rm --network host --privileged --gpus all \
   -e PYTHONUNBUFFERED=1 \
-  -v "$HOME/models:/workspace/models" \
+  -v "$HOME/gr00tn16_ws/checkpoints:/workspace/models" \
   -v "$WORKSHOP/docker/real/scripts:/workspace/Isaac-GR00T/gr00t/eval/real_robot/SO100" \
   real-robot \
   bash -c "cd /Isaac-GR00T && python3 gr00t/eval/run_gr00t_server.py --model-path /workspace/models/$MODEL" \
