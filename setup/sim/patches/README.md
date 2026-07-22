@@ -44,3 +44,22 @@ required to use ATen` → 빌드 실패.
 
 적용: `cd ~/Sim-to-Real-SO-101-Workshop && patch -p0 docker/real/Dockerfile.blackwell < dockerfile_blackwell_flashattn.patch`
 (원본은 Dockerfile.blackwell.orig로 백업됨)
+
+## n1d5_client_adapter.patch (2026-07-22)
+
+`source/sim_to_real_so101/utils/lerobot_interface.py` (`GR00TRemotePolicy`) — 워크숍 sim 평가
+클라이언트를 **n1d5(N1.5) 서버 프로토콜**에 맞춤. 우리 학습본(gr00t_n1_5)을 n1d5
+`inference_service.py` 서버로 서빙하고 워크숍 `lerobot_eval`로 closed-loop 평가하기 위함.
+
+**배경**: 워크숍 클라이언트는 N1.6 워크숍 서버(run_gr00t_server.py) 전용 프로토콜.
+n1d5 서버와 3가지 불일치(전송 계층 msgpack numpy는 동일해서 호환):
+1. 관측 감싸기: 워크숍 `{"observation":obs,"options":..}` → n1d5는 obs 직접
+2. 관측 구조: 워크숍 중첩(`video:{front}`)+(1,1)차원 → n1d5 평면(`video.front`)+(1)차원
+3. 액션 응답: 워크숍 `single_arm`(B,T,5) 튜플 → n1d5 `action.single_arm`(T,5) dict
+4. reset 엔드포인트: n1d5 서버엔 없음 → 선택적 처리
+
+**적용**: `cd ~/Sim-to-Real-SO-101-Workshop && patch -p0 source/sim_to_real_so101/utils/lerobot_interface.py < n1d5_client_adapter.patch`
+(원본 백업: lerobot_interface.py.bak_preadapter)
+
+**검증**: 3ep headless closed-loop 정상 작동(씬 1.5s, 서버 연결·롤아웃·랙배치 확인).
+전송 계층은 두 MsgSerializer의 numpy 직렬화(`np.save`→`__ndarray_class__`)가 동일해 호환.
