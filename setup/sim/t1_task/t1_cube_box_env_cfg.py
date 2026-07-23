@@ -87,6 +87,20 @@ class T1CubeBoxSceneCfg(SO101TaskSceneCfg):
     cube = cube.replace()
     box = box.replace()
 
+    # 검은 박스가 기본 검은 mat에 묻혀 안 보이는 문제 → 밝은 중립 테이블로 교체.
+    # mat은 시각 전용(AssetBaseCfg, 물리 콜라이더는 별도) → 높이/물리 불변, 색만 바뀜.
+    # 카메라가 검은 박스를 관측 가능해져 학습 가능(DR reset_mat_rotation은 대칭 평면이라 무해).
+    mat = AssetBaseCfg(
+        prim_path="{ENV_REGEX_NS}/Mat",
+        spawn=sim_utils.CuboidCfg(
+            size=(0.7, 0.5, 0.004),
+            visual_material=sim_utils.PreviewSurfaceCfg(
+                diffuse_color=(0.62, 0.60, 0.56)  # 밝은 데스크 톤
+            ),
+        ),
+        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.22, 0.0, 0.032)),
+    )
+
     # 그리퍼 jaw ↔ 큐브 접촉 센서 (파지 감지)
     contact_grasp = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/Robot/jaw",
