@@ -47,7 +47,6 @@ assets_path = os.path.dirname(os.path.abspath(assets.__file__))
 # 물체 스폰 높이 — vials(VIAL_SPAWN_Z=0.05)와 동일. mat.usda 표면(top≈0.035)에 안착.
 OBJ_SPAWN_Z = 0.05
 CUBE_SIZE = 0.025               # 실기 빨간 큐브(~2.5cm)
-BOX_SCALE = 0.6                 # tray(0.2×0.16) → 0.12×0.096
 MAT_SURF = 0.035                # mat.usda 표면 높이(흰 커버·판정 기준)
 
 # --- 빨간 큐브 (프리미티브, USD 불필요) ---
@@ -66,22 +65,20 @@ cube = RigidObjectCfg(
     init_state=RigidObjectCfg.InitialStateCfg(pos=(0.24, 0.03, OBJ_SPAWN_Z)),
 )
 
-# --- 검은 박스 (tray 재색·축소) ---
+# --- 검은 오픈탑 박스 (윗면만 열린 직육면체: 바닥+4벽, open_box.usda) ---
 box = RigidObjectCfg(
     prim_path="{ENV_REGEX_NS}/Box",
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{assets_path}/usd/tray_black.usda",
-        scale=(BOX_SCALE, BOX_SCALE, 1.0),
-        mass_props=sim_utils.MassPropertiesCfg(mass=0.5),
+        usd_path=f"{assets_path}/usd/open_box.usda",
+        mass_props=sim_utils.MassPropertiesCfg(mass=0.3),
     ),
-    # workspace 오른쪽(-y). mat.usda 위(x 0.067~0.373 범위)라 base 옆까지는 못 감.
-    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.14, -0.13, OBJ_SPAWN_Z - 0.005)),
+    # 로봇 base(-0.05,0) 우측(-y). mat 2배 확장으로 base 옆 배치 가능.
+    init_state=RigidObjectCfg.InitialStateCfg(pos=(-0.04, -0.22, MAT_SURF + 0.005)),
 )
 
-# 박스 로컬 판정 경계 (tray extent 0→(0.2,0.16), 축소 0.6). 검증 시 튜닝.
-BOX_LOCAL_X_MAX = 0.2 * BOX_SCALE     # 0.12
-BOX_LOCAL_Y_MAX = 0.16 * BOX_SCALE    # 0.096
-BOX_LOCAL_Z_MAX = 0.06
+# 박스 로컬 판정 경계 — open_box는 원점이 캐비티 중심 → ± 대칭. 캐비티 반경 ~0.03 + 여유.
+BOX_LOCAL_XY = 0.045
+BOX_LOCAL_Z_MAX = 0.05
 
 # 큐브 판정 공통 파라미터 (vials 함수 재사용, vertical_threshold=0 → 방향 무관)
 _CUBE_PLACE_PARAMS = dict(
@@ -91,10 +88,10 @@ _CUBE_PLACE_PARAMS = dict(
     warmup_steps=30,
     grasp_history_window=20,
     force_threshold=2,
-    rack_local_x_min=0.0,
-    rack_local_x_max=BOX_LOCAL_X_MAX,
-    rack_local_y_min=0.0,
-    rack_local_y_max=BOX_LOCAL_Y_MAX,
+    rack_local_x_min=-BOX_LOCAL_XY,
+    rack_local_x_max=BOX_LOCAL_XY,
+    rack_local_y_min=-BOX_LOCAL_XY,
+    rack_local_y_max=BOX_LOCAL_XY,
     rack_local_z_max=BOX_LOCAL_Z_MAX,
     vertical_threshold=0.0,
 )
@@ -110,12 +107,22 @@ class T1CubeBoxSceneCfg(SO101TaskSceneCfg):
     cube = cube.replace()
     box = box.replace()
 
-    # 검은 박스가 어두운 mat.usda에 묻히지 않도록 얇은 흰색 시각 커버(collision 없음 → 물리 불변).
-    # mat.usda 표면(0.035) 바로 위에 덮음. 물체는 mat.usda collision(0.035)에 안착.
+    # mat.usda 2배 확장 (로봇 base 옆까지 커버 → 박스 우측 배치 가능). 표면 높이는 유지(z scale 1).
+    mat = AssetBaseCfg(
+        prim_path="{ENV_REGEX_NS}/Mat",
+        spawn=sim_utils.UsdFileCfg(
+            usd_path=f"{assets_path}/usd/mat.usda",
+            scale=(2.0, 2.0, 1.0),
+        ),
+        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.22, 0.0, 0.032)),
+    )
+
+    # 검은 박스가 어두운 mat에 묻히지 않도록 얇은 흰색 시각 커버(collision 없음 → 물리 불변).
+    # mat 표면(0.035) 바로 위에 덮음. 물체는 mat collision(0.035)에 안착. mat 2배에 맞춰 커버도 2배.
     mat_cover = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/MatCover",
         spawn=sim_utils.CuboidCfg(
-            size=(0.34, 0.48, 0.002),  # mat.usda world 풋프린트(0.305×0.457) 덮기
+            size=(0.68, 0.96, 0.002),  # mat 2배(world 0.61×0.914) 덮기
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9, 0.9, 0.9)),
         ),
         init_state=AssetBaseCfg.InitialStateCfg(pos=(0.22, 0.0, MAT_SURF + 0.001)),

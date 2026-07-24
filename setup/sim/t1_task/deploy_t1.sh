@@ -42,12 +42,14 @@ PY
 if [ "$TARGET" = "local" ]; then
   W="$HOME/Sim-to-Real-SO-101-Workshop/source/sim_to_real_so101"
   cp t1_cube_box_env_cfg.py "$W/tasks/t1_cube_box_env_cfg.py"
+  cp open_box.usda "$W/assets/usd/open_box.usda"
   cp reset_cube_box_snippet.py /tmp/_t1_reset.py
   cp gym_register_t1_snippet.py /tmp/_t1_gym.py
   echo "[local] 배포:"; python3 -c "$PYDEPLOY" "$W"
 elif [ "$TARGET" = "5090" ]; then
   W="~/Sim-to-Real-SO-101-Workshop/source/sim_to_real_so101"
   scp -q t1_cube_box_env_cfg.py "5090:$W/tasks/t1_cube_box_env_cfg.py"
+  scp -q open_box.usda "5090:$W/assets/usd/open_box.usda"
   scp -q reset_cube_box_snippet.py 5090:/tmp/_t1_reset.py
   scp -q gym_register_t1_snippet.py 5090:/tmp/_t1_gym.py
   echo "[5090] 배포:"; ssh 5090 "python3 -c \"\$(cat)\" $W" <<< "$PYDEPLOY"
