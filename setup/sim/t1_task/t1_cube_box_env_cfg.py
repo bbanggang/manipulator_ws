@@ -1,10 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # 커스텀 T1 태스크: 빨간 큐브 → 검은 박스 (Pick red cube, place in black box)
-# vials_to_rack_env_cfg.py 를 개조. 재사용:
-#   - 파지/배치 판정은 vials 함수를 그대로 사용(any_vial_grasped / vial_placed_on_rack[_termination])
-#     · vials=["cube"], rack_name="box", vertical_threshold=0.0(큐브는 방향 무관 → 수직조건 무력화)
-#   - 리셋만 신설(reset_cube_box): 박스는 슬롯 prim이 없어 reset_vials_rack 재사용 불가
-# 에셋: 빨간 큐브 = 프리미티브 CuboidCfg(USD 불필요) / 검은 박스 = tray_black.usda(tray 재색·축소)
+#
+# 설계 원칙(2026-07-24 재작성): 워크숍 vials_to_rack 태스크의 **검증된 구성**(로봇 위치·mat.usda·
+# 라이트박스·물체 높이)을 그대로 계승하고, 아래 5가지만 최소 변경한다.
+#   1) 바이알 3개 → 빨간 큐브 1개(프리미티브)   2) 랙 → 검은 박스(tray_black)
+#   3) 로봇 보라색   4) 박스를 오른쪽 배치   5) 성공 판정 = 큐브가 박스 안
+# mat.usda는 건드리지 않는다(로봇이 제대로 서고 collision·높이가 검증됨). 검은 박스가 어두운 mat에
+# 묻히는 것만 **얇은 흰색 시각 커버(collision 없음)**로 해결한다.
+# 파지/배치 판정은 vials 함수 재사용(vials=["cube"], rack="box", vertical_threshold=0=방향 무관).
+# 리셋만 reset_cube_box 신설(랙 슬롯 로직 불필요).
 import os
 import numpy as np
 
@@ -24,7 +28,6 @@ from sim_to_real_so101.mdp import (
     reset_cube_box,
     randomize_sky_light,
     ROBOT_COLORS,
-    randomize_mat_rotation,
     randomize_robot_color,
     any_vial_grasped,
     vial_placed_on_rack,
@@ -41,13 +44,11 @@ from .task_env_cfg import (
 
 assets_path = os.path.dirname(os.path.abspath(assets.__file__))
 
-# 작업면 상단. ⚠️ 워크숍 LightStudio(라이트박스) 흰 바닥이 z≈0.026에 있어, 물체를 그 위에
-# 둬야 파묻혀 보이지 않음(원본 mat.usda도 0.035였음). 로봇 base는 z=0(작업면보다 아래).
-WORK_TOP = 0.035
-CUBE_SIZE = 0.025            # 실기 빨간 큐브(~2.5cm)와 일치
-CUBE_SPAWN_Z = WORK_TOP + CUBE_SIZE / 2 + 0.006  # ≈0.054, 작업면 위에서 살짝 떨궈 안착
-BOX_SCALE = 0.6             # tray(0.2×0.16) → 0.12×0.096 (rack 풋프린트와 유사)
-BOX_SPAWN_Z = WORK_TOP + 0.005  # tray 바닥이 작업면 위에 안착
+# 물체 스폰 높이 — vials(VIAL_SPAWN_Z=0.05)와 동일. mat.usda 표면(top≈0.035)에 안착.
+OBJ_SPAWN_Z = 0.05
+CUBE_SIZE = 0.025               # 실기 빨간 큐브(~2.5cm)
+BOX_SCALE = 0.6                 # tray(0.2×0.16) → 0.12×0.096
+MAT_SURF = 0.035                # mat.usda 표면 높이(흰 커버·판정 기준)
 
 # --- 빨간 큐브 (프리미티브, USD 불필요) ---
 cube = RigidObjectCfg(
@@ -62,7 +63,7 @@ cube = RigidObjectCfg(
             static_friction=1.0, dynamic_friction=1.0
         ),
     ),
-    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.22, 0.02, CUBE_SPAWN_Z)),
+    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.24, 0.03, OBJ_SPAWN_Z)),
 )
 
 # --- 검은 박스 (tray 재색·축소) ---
@@ -73,44 +74,51 @@ box = RigidObjectCfg(
         scale=(BOX_SCALE, BOX_SCALE, 1.0),
         mass_props=sim_utils.MassPropertiesCfg(mass=0.5),
     ),
-    # 로봇 base(-0.05, 0) 바로 오른쪽(-y). 확장된 mat 위라 base 옆에 배치 가능.
-    init_state=RigidObjectCfg.InitialStateCfg(pos=(-0.03, -0.16, BOX_SPAWN_Z)),
+    # workspace 오른쪽(-y). mat.usda 위(x 0.067~0.373 범위)라 base 옆까지는 못 감.
+    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.14, -0.13, OBJ_SPAWN_Z - 0.005)),
 )
 
-# 박스 로컬 판정 경계 (tray extent 0→(0.2,0.16), 축소 0.6 → 0→(0.12,0.096)). 검증 시 튜닝.
+# 박스 로컬 판정 경계 (tray extent 0→(0.2,0.16), 축소 0.6). 검증 시 튜닝.
 BOX_LOCAL_X_MAX = 0.2 * BOX_SCALE     # 0.12
 BOX_LOCAL_Y_MAX = 0.16 * BOX_SCALE    # 0.096
-BOX_LOCAL_Z_MAX = 0.06                 # 큐브 중심이 이 아래면 "박스 안"
+BOX_LOCAL_Z_MAX = 0.06
+
+# 큐브 판정 공통 파라미터 (vials 함수 재사용, vertical_threshold=0 → 방향 무관)
+_CUBE_PLACE_PARAMS = dict(
+    contact_sensor_cfg=SceneEntityCfg("contact_grasp"),
+    vials=["cube"],
+    rack_name="box",
+    warmup_steps=30,
+    grasp_history_window=20,
+    force_threshold=2,
+    rack_local_x_min=0.0,
+    rack_local_x_max=BOX_LOCAL_X_MAX,
+    rack_local_y_min=0.0,
+    rack_local_y_max=BOX_LOCAL_Y_MAX,
+    rack_local_z_max=BOX_LOCAL_Z_MAX,
+    vertical_threshold=0.0,
+)
 
 
 @configclass
 class T1CubeBoxSceneCfg(SO101TaskSceneCfg):
-    # 로봇 base를 작업면(mat) 위(z=WORK_TOP)에 올림 → 로봇·물체가 같은 테이블 평면(실제 셋업과 동일).
+    # 로봇: vials와 동일(위치 변경 없음 — 원본 mat.usda 위에 정상 안착). 접촉 센서만 활성화.
     robot: ArticulationCfg = S0101_CONTACT_GRASP_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Robot",
-        init_state=S0101_CONTACT_GRASP_CFG.init_state.replace(pos=(-0.05, 0.0, WORK_TOP)),
+        prim_path="{ENV_REGEX_NS}/Robot"
     )
 
     cube = cube.replace()
     box = box.replace()
 
-    # 흰색 작업면(테이블). 로봇 base(z=WORK_TOP)와 물체가 모두 이 위에 얹힘. kinematic RigidObject라
-    # GPU 물리에서 collision 확실히 등록. 로봇 밑까지 덮도록 확장(x -0.2~0.5, y ±0.3) → 박스를
-    # base 옆까지 자유롭게 배치 가능. reset_mat_rotation은 비활성화(아래).
-    mat = RigidObjectCfg(
-        prim_path="{ENV_REGEX_NS}/Mat",
+    # 검은 박스가 어두운 mat.usda에 묻히지 않도록 얇은 흰색 시각 커버(collision 없음 → 물리 불변).
+    # mat.usda 표면(0.035) 바로 위에 덮음. 물체는 mat.usda collision(0.035)에 안착.
+    mat_cover = AssetBaseCfg(
+        prim_path="{ENV_REGEX_NS}/MatCover",
         spawn=sim_utils.CuboidCfg(
-            size=(0.7, 0.6, 0.02),  # 로봇+workspace 전체 커버
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(kinematic_enabled=True),
-            collision_props=sim_utils.CollisionPropertiesCfg(),
-            physics_material=sim_utils.RigidBodyMaterialCfg(
-                static_friction=1.0, dynamic_friction=1.0
-            ),
-            visual_material=sim_utils.PreviewSurfaceCfg(
-                diffuse_color=(0.9, 0.9, 0.9)  # 흰색(검은 박스 대비)
-            ),
+            size=(0.34, 0.48, 0.002),  # mat.usda world 풋프린트(0.305×0.457) 덮기
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9, 0.9, 0.9)),
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.15, 0.0, WORK_TOP - 0.01)),
+        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.22, 0.0, MAT_SURF + 0.001)),
     )
 
     # 그리퍼 jaw ↔ 큐브 접촉 센서 (파지 감지)
@@ -142,10 +150,7 @@ class T1CubeBoxDRSceneCfg(T1CubeBoxSceneCfg):
 
 @configclass
 class T1CubeBoxEventCfg(TaskEventCfg):
-    """큐브·박스 리셋 (큐브 위치 다양화, 박스는 소폭)."""
-
-    # mat이 RigidObject(kinematic 바닥)라 prim_paths 미보유 → mat 회전 DR 비활성화
-    reset_mat_rotation = None
+    """큐브·박스 리셋 + 로봇 보라색. (mat 회전 DR은 mat.usda 그대로라 상속 유지)"""
 
     reset_cube_setup = EventTerm(
         func=reset_cube_box,
@@ -153,23 +158,21 @@ class T1CubeBoxEventCfg(TaskEventCfg):
         params={
             "cube": "cube",
             "box": "box",
-            # 큐브 위치 다양화 (실기 5지점 그리드 반영). 검증 시 도달범위 맞춰 조정
             "cube_pose_range": {
                 "x": (-0.05, 0.05),
-                "y": (-0.06, 0.06),
+                "y": (-0.05, 0.05),
                 "yaw": (-1.57, 1.57),
             },
-            # 박스는 소폭만
             "box_pose_range": {
-                "x": (-0.03, 0.03),
+                "x": (-0.02, 0.02),
                 "y": (-0.02, 0.02),
                 "yaw": (-0.3, 0.3),
             },
-            "fixed_cube_z": CUBE_SPAWN_Z,
+            "fixed_cube_z": OBJ_SPAWN_Z,
         },
     )
 
-    # 로봇을 보라색으로 (ROBOT_COLORS["purple"] 사용 — deploy가 팔레트에 추가)
+    # 로봇 보라색 (ROBOT_COLORS["purple"] — deploy가 팔레트에 추가)
     set_robot_purple = EventTerm(
         func=randomize_robot_color,
         mode="reset",
@@ -179,8 +182,9 @@ class T1CubeBoxEventCfg(TaskEventCfg):
 
 @configclass
 class T1CubeBoxEventDRCfg(T1CubeBoxEventCfg):
-    # DR에서는 색을 무작위화 (base의 set_robot_purple 비활성화)
+    # DR에서는 색 무작위화 (base의 보라색 고정 해제)
     set_robot_purple = None
+
     reset_set_robot_visual_material = EventTerm(
         func=randomize_robot_color,
         mode="reset",
@@ -198,32 +202,6 @@ class T1CubeBoxEventDRCfg(T1CubeBoxEventCfg):
         },
     )
 
-    reset_mat_rotation = EventTerm(
-        func=randomize_mat_rotation,
-        mode="reset",
-        params={
-            "yaw_range": (-0.3, 0.3),
-            "asset_cfg": SceneEntityCfg("mat"),
-        },
-    )
-
-
-# 큐브 판정 공통 파라미터 (vials 함수 재사용, vertical_threshold=0 → 방향 무관)
-_CUBE_PLACE_PARAMS = dict(
-    contact_sensor_cfg=SceneEntityCfg("contact_grasp"),
-    vials=["cube"],
-    rack_name="box",
-    warmup_steps=30,
-    grasp_history_window=20,
-    force_threshold=2,
-    rack_local_x_min=0.0,
-    rack_local_x_max=BOX_LOCAL_X_MAX,
-    rack_local_y_min=0.0,
-    rack_local_y_max=BOX_LOCAL_Y_MAX,
-    rack_local_z_max=BOX_LOCAL_Z_MAX,
-    vertical_threshold=0.0,
-)
-
 
 @configclass
 class T1CubeBoxObservationsCfg(TaskObservationsCfg):
@@ -234,12 +212,11 @@ class T1CubeBoxObservationsCfg(TaskObservationsCfg):
             params={
                 "contact_sensor_cfg": SceneEntityCfg("contact_grasp"),
                 "vials": ["cube"],
-                "min_height": 0.055,
+                "min_height": MAT_SURF + 0.02,
                 "warmup_steps": 30,
                 "force_threshold": 2,
             },
         )
-
         cube_placed = ObsTerm(
             func=vial_placed_on_rack,
             params=dict(_CUBE_PLACE_PARAMS),
@@ -255,7 +232,6 @@ class T1CubeBoxObservationsCfg(TaskObservationsCfg):
 @configclass
 class T1CubeBoxTerminationsCfg:
     time_out = DoneTerm(func=time_out, time_out=True)
-
     success = DoneTerm(
         func=vial_placed_on_rack_termination,
         time_out=False,
