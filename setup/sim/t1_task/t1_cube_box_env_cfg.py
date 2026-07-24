@@ -41,9 +41,11 @@ from .task_env_cfg import (
 
 assets_path = os.path.dirname(os.path.abspath(assets.__file__))
 
-CUBE_SPAWN_Z = 0.05          # 큐브 중심 스폰 높이 (vials와 동일 매트면 기준)
+MAT_TOP = 0.037              # 작업 표면(테이블) 상단 높이 — 큐브·박스가 이 위에 안착
 CUBE_SIZE = 0.025            # 실기 빨간 큐브(~2.5cm)와 일치
+CUBE_SPAWN_Z = MAT_TOP + CUBE_SIZE / 2 + 0.006  # ≈0.056, mat 위에서 살짝 떨궈 안착
 BOX_SCALE = 0.6             # tray(0.2×0.16) → 0.12×0.096 (rack 풋프린트와 유사)
+BOX_SPAWN_Z = MAT_TOP + 0.005  # tray 바닥이 mat 위에 안착
 
 # --- 빨간 큐브 (프리미티브, USD 불필요) ---
 cube = RigidObjectCfg(
@@ -69,7 +71,7 @@ box = RigidObjectCfg(
         scale=(BOX_SCALE, BOX_SCALE, 1.0),
         mass_props=sim_utils.MassPropertiesCfg(mass=0.5),
     ),
-    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.14, 0.03, 0.02)),
+    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.14, 0.03, BOX_SPAWN_Z)),
 )
 
 # 박스 로컬 판정 경계 (tray extent 0→(0.2,0.16), 축소 0.6 → 0→(0.12,0.096)). 검증 시 튜닝.
@@ -87,18 +89,20 @@ class T1CubeBoxSceneCfg(SO101TaskSceneCfg):
     cube = cube.replace()
     box = box.replace()
 
-    # 검은 박스가 기본 검은 mat에 묻혀 안 보이는 문제 → 밝은 중립 테이블로 교체.
-    # mat은 시각 전용(AssetBaseCfg, 물리 콜라이더는 별도) → 높이/물리 불변, 색만 바뀜.
-    # 카메라가 검은 박스를 관측 가능해져 학습 가능(DR reset_mat_rotation은 대칭 평면이라 무해).
+    # 검은 박스가 기본 검은 mat에 묻히는 문제 → 흰색에 가까운 테이블로 교체.
+    # ⚠️ 원래 mat.usda가 제공하던 작업 표면(콜라이더)을 대체하므로 collision_props 부여 —
+    # 없으면 큐브·박스가 바닥(z=0)까지 떨어져 mat에 파묻힘. top=MAT_TOP(0.037)에 안착.
+    # (DR reset_mat_rotation은 대칭 평면이라 무해)
     mat = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Mat",
         spawn=sim_utils.CuboidCfg(
-            size=(0.7, 0.5, 0.004),
+            size=(0.6, 0.45, 0.02),  # 두께 0.02, 아래 pos로 top=0.037 맞춤
+            collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(
-                diffuse_color=(0.62, 0.60, 0.56)  # 밝은 데스크 톤
+                diffuse_color=(0.9, 0.9, 0.9)  # 흰색에 가깝게
             ),
         ),
-        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.22, 0.0, 0.032)),
+        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.22, 0.0, MAT_TOP - 0.01)),
     )
 
     # 그리퍼 jaw ↔ 큐브 접촉 센서 (파지 감지)
