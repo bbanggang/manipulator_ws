@@ -12,6 +12,17 @@ MODE="${1:-view}"
 WORKSHOP="$HOME/blocktask_ws/Sim-to-Real-SO-101-Workshop"
 [ -d "$WORKSHOP/source" ] || { echo "❌ $WORKSHOP 없음 — 먼저 클론하세요"; exit 1; }
 
+DATASET_DIR="$WORKSHOP/datasets/sim_so101_blocktask"
+
+# clear: 데이터셋 폴더 삭제(root 소유 → 컨테이너로). 재녹화 전 초기화용.
+# ⚠️ 기존 녹화 에피소드가 모두 지워집니다. recorder가 resume을 못 해 재시작 시 필요.
+if [ "$MODE" = "clear" ]; then
+  echo "삭제: $DATASET_DIR (기존 에피소드 전부 삭제됩니다)"
+  sg docker -c "docker run --rm --entrypoint /bin/bash -v $WORKSHOP/datasets:/d teleop-docker:latest -c 'rm -rf /d/sim_so101_blocktask'" 2>&1 | tail -1
+  echo "완료 — 이제 ./blocktask_run.sh record 로 새로 녹화하세요."
+  exit 0
+fi
+
 export DISPLAY="${DISPLAY:-:1}"
 xhost +local: >/dev/null 2>&1 || true
 docker_run() { if docker ps >/dev/null 2>&1; then eval "$1"; else sg docker -c "$1"; fi; }
