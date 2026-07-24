@@ -41,11 +41,13 @@ from .task_env_cfg import (
 
 assets_path = os.path.dirname(os.path.abspath(assets.__file__))
 
-GROUND_TOP = 0.0            # 바닥(ground) 상단 — mat 제거, 로봇 base(z=0)와 동일 평면에 물체 안착
+# 작업면 상단. ⚠️ 워크숍 LightStudio(라이트박스) 흰 바닥이 z≈0.026에 있어, 물체를 그 위에
+# 둬야 파묻혀 보이지 않음(원본 mat.usda도 0.035였음). 로봇 base는 z=0(작업면보다 아래).
+WORK_TOP = 0.035
 CUBE_SIZE = 0.025            # 실기 빨간 큐브(~2.5cm)와 일치
-CUBE_SPAWN_Z = GROUND_TOP + CUBE_SIZE / 2 + 0.006  # ≈0.019, 바닥 위에서 살짝 떨궈 안착
+CUBE_SPAWN_Z = WORK_TOP + CUBE_SIZE / 2 + 0.006  # ≈0.054, 작업면 위에서 살짝 떨궈 안착
 BOX_SCALE = 0.6             # tray(0.2×0.16) → 0.12×0.096 (rack 풋프린트와 유사)
-BOX_SPAWN_Z = GROUND_TOP + 0.005  # tray 바닥이 ground 위에 안착
+BOX_SPAWN_Z = WORK_TOP + 0.005  # tray 바닥이 작업면 위에 안착
 
 # --- 빨간 큐브 (프리미티브, USD 불필요) ---
 cube = RigidObjectCfg(
@@ -60,7 +62,7 @@ cube = RigidObjectCfg(
             static_friction=1.0, dynamic_friction=1.0
         ),
     ),
-    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.20, 0.0, CUBE_SPAWN_Z)),
+    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.22, 0.02, CUBE_SPAWN_Z)),
 )
 
 # --- 검은 박스 (tray 재색·축소) ---
@@ -71,8 +73,8 @@ box = RigidObjectCfg(
         scale=(BOX_SCALE, BOX_SCALE, 1.0),
         mass_props=sim_utils.MassPropertiesCfg(mass=0.5),
     ),
-    # 로봇 base(-0.05, 0) 오른쪽(-y), base 가까이 배치. (좌우는 y 부호로 조정)
-    init_state=RigidObjectCfg.InitialStateCfg(pos=(-0.03, -0.13, BOX_SPAWN_Z)),
+    # 로봇 base(-0.05, 0) 오른쪽(-y), 작업면 위 최대한 base 쪽. (더 당기면 작업면 밖=낙하)
+    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.09, -0.14, BOX_SPAWN_Z)),
 )
 
 # 박스 로컬 판정 경계 (tray extent 0→(0.2,0.16), 축소 0.6 → 0→(0.12,0.096)). 검증 시 튜닝.
@@ -90,24 +92,24 @@ class T1CubeBoxSceneCfg(SO101TaskSceneCfg):
     cube = cube.replace()
     box = box.replace()
 
-    # mat 제거 → 큰 회색 ground 바닥. ⚠️ AssetBaseCfg 정적 collision은 GPU 물리 파이프라인에서
-    # 등록이 안 돼 물체가 바닥을 통과·낙하함(원본 mat.usda는 USD에 PhysX collision이 구워져 있어 됐음).
-    # → kinematic RigidObject로 확실한 collision 확보. 로봇 fixed-base와 둘 다 immovable이라 겹쳐도 안정.
-    # (reset_mat_rotation은 T1CubeBoxEventCfg에서 비활성화 → RigidObject의 prim_paths 미보유 무방)
+    # 흰색 작업면(라이트박스 바닥 위 top=WORK_TOP). kinematic RigidObject라 GPU 물리에서 collision
+    # 확실히 등록(정적 AssetBaseCfg collision은 미등록→물체 낙하했음). 로봇 base(x≈0)는 이 면보다
+    # 아래(z=0)이고, 면은 workspace(x 0.07~0.37)만 덮어 로봇 몸체와 겹치지 않음(원본 mat.usda 풋프린트).
+    # reset_mat_rotation은 비활성화(아래)라 RigidObject prim_paths 미보유 무방.
     mat = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/Mat",
         spawn=sim_utils.CuboidCfg(
-            size=(2.0, 2.0, 0.02),
+            size=(0.305, 0.457, 0.02),  # 원본 mat.usda 풋프린트(로봇 회피)
             rigid_props=sim_utils.RigidBodyPropertiesCfg(kinematic_enabled=True),
             collision_props=sim_utils.CollisionPropertiesCfg(),
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=1.0, dynamic_friction=1.0
             ),
             visual_material=sim_utils.PreviewSurfaceCfg(
-                diffuse_color=(0.35, 0.35, 0.35)  # 중립 회색 바닥
+                diffuse_color=(0.9, 0.9, 0.9)  # 흰색(검은 박스 대비)
             ),
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, GROUND_TOP - 0.01)),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.22, 0.0, WORK_TOP - 0.01)),
     )
 
     # 그리퍼 jaw ↔ 큐브 접촉 센서 (파지 감지)
