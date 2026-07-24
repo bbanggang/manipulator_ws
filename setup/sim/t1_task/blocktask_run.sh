@@ -22,7 +22,7 @@ mkdir -p "$WORKSHOP/outputs" "$WORKSHOP/datasets"
 
 if [ "$MODE" = "record" ]; then
   # 리더암 teleop 녹화 (S=에피소드 저장/중지, R=리셋). repo_id는 본인 데이터셋으로 조정.
-  INNER="lerobot_agent --task Lerobot-So101-Teleop-Vials-To-Rack-DR --num_envs 1 \
+  INNER="lerobot_agent --task Lerobot-So101-Teleop-Vials-To-Rack-DR --num_envs 1 --rerun \
     --port /dev/ttyLEADER --robot_id leader \
     --repo_id heongyu/sim_so101_blocktask \
     --repo_root /workspace/Sim-to-Real-SO-101-Workshop/datasets/sim_so101_blocktask \
