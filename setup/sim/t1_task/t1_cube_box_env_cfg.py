@@ -73,8 +73,8 @@ box = RigidObjectCfg(
         scale=(BOX_SCALE, BOX_SCALE, 1.0),
         mass_props=sim_utils.MassPropertiesCfg(mass=0.5),
     ),
-    # 로봇 base(-0.05, 0) 오른쪽(-y), 작업면 위 최대한 base 쪽. (더 당기면 작업면 밖=낙하)
-    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.09, -0.14, BOX_SPAWN_Z)),
+    # 로봇 base(-0.05, 0) 바로 오른쪽(-y). 확장된 mat 위라 base 옆에 배치 가능.
+    init_state=RigidObjectCfg.InitialStateCfg(pos=(-0.03, -0.16, BOX_SPAWN_Z)),
 )
 
 # 박스 로컬 판정 경계 (tray extent 0→(0.2,0.16), 축소 0.6 → 0→(0.12,0.096)). 검증 시 튜닝.
@@ -85,21 +85,22 @@ BOX_LOCAL_Z_MAX = 0.06                 # 큐브 중심이 이 아래면 "박스 
 
 @configclass
 class T1CubeBoxSceneCfg(SO101TaskSceneCfg):
+    # 로봇 base를 작업면(mat) 위(z=WORK_TOP)에 올림 → 로봇·물체가 같은 테이블 평면(실제 셋업과 동일).
     robot: ArticulationCfg = S0101_CONTACT_GRASP_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Robot"
+        prim_path="{ENV_REGEX_NS}/Robot",
+        init_state=S0101_CONTACT_GRASP_CFG.init_state.replace(pos=(-0.05, 0.0, WORK_TOP)),
     )
 
     cube = cube.replace()
     box = box.replace()
 
-    # 흰색 작업면(라이트박스 바닥 위 top=WORK_TOP). kinematic RigidObject라 GPU 물리에서 collision
-    # 확실히 등록(정적 AssetBaseCfg collision은 미등록→물체 낙하했음). 로봇 base(x≈0)는 이 면보다
-    # 아래(z=0)이고, 면은 workspace(x 0.07~0.37)만 덮어 로봇 몸체와 겹치지 않음(원본 mat.usda 풋프린트).
-    # reset_mat_rotation은 비활성화(아래)라 RigidObject prim_paths 미보유 무방.
+    # 흰색 작업면(테이블). 로봇 base(z=WORK_TOP)와 물체가 모두 이 위에 얹힘. kinematic RigidObject라
+    # GPU 물리에서 collision 확실히 등록. 로봇 밑까지 덮도록 확장(x -0.2~0.5, y ±0.3) → 박스를
+    # base 옆까지 자유롭게 배치 가능. reset_mat_rotation은 비활성화(아래).
     mat = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/Mat",
         spawn=sim_utils.CuboidCfg(
-            size=(0.305, 0.457, 0.02),  # 원본 mat.usda 풋프린트(로봇 회피)
+            size=(0.7, 0.6, 0.02),  # 로봇+workspace 전체 커버
             rigid_props=sim_utils.RigidBodyPropertiesCfg(kinematic_enabled=True),
             collision_props=sim_utils.CollisionPropertiesCfg(),
             physics_material=sim_utils.RigidBodyMaterialCfg(
@@ -109,7 +110,7 @@ class T1CubeBoxSceneCfg(SO101TaskSceneCfg):
                 diffuse_color=(0.9, 0.9, 0.9)  # 흰색(검은 박스 대비)
             ),
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.22, 0.0, WORK_TOP - 0.01)),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.15, 0.0, WORK_TOP - 0.01)),
     )
 
     # 그리퍼 jaw ↔ 큐브 접촉 센서 (파지 감지)
