@@ -41,7 +41,7 @@ from .task_env_cfg import (
 
 assets_path = os.path.dirname(os.path.abspath(assets.__file__))
 
-MAT_TOP = 0.037              # 작업 표면(테이블) 상단 높이 — 큐브·박스가 이 위에 안착
+MAT_TOP = 0.035              # 작업 표면 상단 (원본 mat.usda 표면과 동일: pos 0.032 + 두께 0.003)
 CUBE_SIZE = 0.025            # 실기 빨간 큐브(~2.5cm)와 일치
 CUBE_SPAWN_Z = MAT_TOP + CUBE_SIZE / 2 + 0.006  # ≈0.056, mat 위에서 살짝 떨궈 안착
 BOX_SCALE = 0.6             # tray(0.2×0.16) → 0.12×0.096 (rack 풋프린트와 유사)
@@ -89,24 +89,21 @@ class T1CubeBoxSceneCfg(SO101TaskSceneCfg):
     cube = cube.replace()
     box = box.replace()
 
-    # 흰색 작업 테이블. ⚠️ base scene엔 ground plane이 없고 원래 mat.usda(MDL 재질, 재색 불가)가
-    # 바닥 콜라이더였음 → 교체 시 collision 필수. AssetBaseCfg 정적 collision은 등록이 불안정해
-    # 큐브가 바닥 없이 낙하→경계 밖 삭제→크래시했음. → kinematic RigidObject로 안정적 콜라이더 확보.
-    # top=MAT_TOP(0.037)에 큐브·박스 안착. (DR reset_mat_rotation은 대칭 평면이라 무해)
-    mat = RigidObjectCfg(
+    # 흰색 작업 테이블. base scene엔 ground plane이 없어 원래 mat.usda(MDL 재질 → 재색 불가)가
+    # 바닥 콜라이더였음. 이를 프리미티브로 대체(collision 부여, 흰색). ⚠️ mat은 DR
+    # randomize_mat_rotation이 asset.prim_paths를 요구하므로 반드시 AssetBaseCfg여야 함(RigidObject 불가).
+    # 크기·위치는 mat.usda와 동일(0.457×0.305 @ x=0.22)로 매칭 → 로봇 베이스(x≈0)와 겹치지 않아
+    # 물리 안정(이전 0.6×0.45는 로봇과 겹쳐 크래시했음). DR 90° yaw 후 world footprint x0.305×y0.457.
+    mat = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Mat",
         spawn=sim_utils.CuboidCfg(
-            size=(0.5, 0.42, 0.02),  # top = MAT_TOP
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(kinematic_enabled=True),
-            collision_props=sim_utils.CollisionPropertiesCfg(),
-            physics_material=sim_utils.RigidBodyMaterialCfg(
-                static_friction=1.0, dynamic_friction=1.0
-            ),
+            size=(0.457, 0.305, 0.02),  # mat.usda와 동일 풋프린트
+            collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=True),
             visual_material=sim_utils.PreviewSurfaceCfg(
                 diffuse_color=(0.9, 0.9, 0.9)  # 흰색에 가깝게
             ),
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.22, 0.0, MAT_TOP - 0.01)),
+        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.22, 0.0, MAT_TOP - 0.01)),
     )
 
     # 그리퍼 jaw ↔ 큐브 접촉 센서 (파지 감지)
