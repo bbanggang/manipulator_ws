@@ -89,20 +89,24 @@ class T1CubeBoxSceneCfg(SO101TaskSceneCfg):
     cube = cube.replace()
     box = box.replace()
 
-    # 검은 박스가 기본 검은 mat에 묻히는 문제 → 흰색에 가까운 테이블로 교체.
-    # ⚠️ 원래 mat.usda가 제공하던 작업 표면(콜라이더)을 대체하므로 collision_props 부여 —
-    # 없으면 큐브·박스가 바닥(z=0)까지 떨어져 mat에 파묻힘. top=MAT_TOP(0.037)에 안착.
-    # (DR reset_mat_rotation은 대칭 평면이라 무해)
-    mat = AssetBaseCfg(
+    # 흰색 작업 테이블. ⚠️ base scene엔 ground plane이 없고 원래 mat.usda(MDL 재질, 재색 불가)가
+    # 바닥 콜라이더였음 → 교체 시 collision 필수. AssetBaseCfg 정적 collision은 등록이 불안정해
+    # 큐브가 바닥 없이 낙하→경계 밖 삭제→크래시했음. → kinematic RigidObject로 안정적 콜라이더 확보.
+    # top=MAT_TOP(0.037)에 큐브·박스 안착. (DR reset_mat_rotation은 대칭 평면이라 무해)
+    mat = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/Mat",
         spawn=sim_utils.CuboidCfg(
-            size=(0.6, 0.45, 0.02),  # 두께 0.02, 아래 pos로 top=0.037 맞춤
+            size=(0.5, 0.42, 0.02),  # top = MAT_TOP
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(kinematic_enabled=True),
             collision_props=sim_utils.CollisionPropertiesCfg(),
+            physics_material=sim_utils.RigidBodyMaterialCfg(
+                static_friction=1.0, dynamic_friction=1.0
+            ),
             visual_material=sim_utils.PreviewSurfaceCfg(
                 diffuse_color=(0.9, 0.9, 0.9)  # 흰색에 가깝게
             ),
         ),
-        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.22, 0.0, MAT_TOP - 0.01)),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.22, 0.0, MAT_TOP - 0.01)),
     )
 
     # 그리퍼 jaw ↔ 큐브 접촉 센서 (파지 감지)
