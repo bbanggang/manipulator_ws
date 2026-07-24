@@ -41,11 +41,11 @@ from .task_env_cfg import (
 
 assets_path = os.path.dirname(os.path.abspath(assets.__file__))
 
-MAT_TOP = 0.035              # 작업 표면 상단 (원본 mat.usda 표면과 동일: pos 0.032 + 두께 0.003)
+GROUND_TOP = 0.0            # 바닥(ground) 상단 — mat 제거, 로봇 base(z=0)와 동일 평면에 물체 안착
 CUBE_SIZE = 0.025            # 실기 빨간 큐브(~2.5cm)와 일치
-CUBE_SPAWN_Z = MAT_TOP + CUBE_SIZE / 2 + 0.006  # ≈0.056, mat 위에서 살짝 떨궈 안착
+CUBE_SPAWN_Z = GROUND_TOP + CUBE_SIZE / 2 + 0.006  # ≈0.019, 바닥 위에서 살짝 떨궈 안착
 BOX_SCALE = 0.6             # tray(0.2×0.16) → 0.12×0.096 (rack 풋프린트와 유사)
-BOX_SPAWN_Z = MAT_TOP + 0.005  # tray 바닥이 mat 위에 안착
+BOX_SPAWN_Z = GROUND_TOP + 0.005  # tray 바닥이 ground 위에 안착
 
 # --- 빨간 큐브 (프리미티브, USD 불필요) ---
 cube = RigidObjectCfg(
@@ -60,7 +60,7 @@ cube = RigidObjectCfg(
             static_friction=1.0, dynamic_friction=1.0
         ),
     ),
-    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.22, -0.10, CUBE_SPAWN_Z)),
+    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.20, 0.0, CUBE_SPAWN_Z)),
 )
 
 # --- 검은 박스 (tray 재색·축소) ---
@@ -71,7 +71,8 @@ box = RigidObjectCfg(
         scale=(BOX_SCALE, BOX_SCALE, 1.0),
         mass_props=sim_utils.MassPropertiesCfg(mass=0.5),
     ),
-    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.14, 0.03, BOX_SPAWN_Z)),
+    # 로봇 base(-0.05, 0) 오른쪽(-y)에 배치. (오른쪽/왼쪽은 육안 확인 후 y 부호로 조정)
+    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, -0.18, BOX_SPAWN_Z)),
 )
 
 # 박스 로컬 판정 경계 (tray extent 0→(0.2,0.16), 축소 0.6 → 0→(0.12,0.096)). 검증 시 튜닝.
@@ -89,21 +90,19 @@ class T1CubeBoxSceneCfg(SO101TaskSceneCfg):
     cube = cube.replace()
     box = box.replace()
 
-    # 흰색 작업 테이블. base scene엔 ground plane이 없어 원래 mat.usda(MDL 재질 → 재색 불가)가
-    # 바닥 콜라이더였음. 이를 프리미티브로 대체(collision 부여, 흰색). ⚠️ mat은 DR
-    # randomize_mat_rotation이 asset.prim_paths를 요구하므로 반드시 AssetBaseCfg여야 함(RigidObject 불가).
-    # 크기·위치는 mat.usda와 동일(0.457×0.305 @ x=0.22)로 매칭 → 로봇 베이스(x≈0)와 겹치지 않아
-    # 물리 안정(이전 0.6×0.45는 로봇과 겹쳐 크래시했음). DR 90° yaw 후 world footprint x0.305×y0.457.
+    # mat 제거 → 큰 회색 ground 바닥으로 대체 (base scene엔 ground plane이 없어 바닥 콜라이더 필요).
+    # 이름·경로는 "Mat" 유지(DR randomize_mat_rotation 호환 — 큰 대칭 바닥이라 ±yaw 회전 무해).
+    # top=GROUND_TOP(0)에 로봇 base·큐브·박스가 같은 평면에 안착.
     mat = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Mat",
         spawn=sim_utils.CuboidCfg(
-            size=(0.457, 0.305, 0.02),  # mat.usda와 동일 풋프린트
+            size=(2.0, 2.0, 0.02),
             collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=True),
             visual_material=sim_utils.PreviewSurfaceCfg(
-                diffuse_color=(0.9, 0.9, 0.9)  # 흰색에 가깝게
+                diffuse_color=(0.35, 0.35, 0.35)  # 중립 회색 바닥
             ),
         ),
-        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.22, 0.0, MAT_TOP - 0.01)),
+        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.0, 0.0, GROUND_TOP - 0.01)),
     )
 
     # 그리퍼 jaw ↔ 큐브 접촉 센서 (파지 감지)
@@ -159,9 +158,18 @@ class T1CubeBoxEventCfg(TaskEventCfg):
         },
     )
 
+    # 로봇을 보라색으로 (ROBOT_COLORS["purple"] 사용 — deploy가 팔레트에 추가)
+    set_robot_purple = EventTerm(
+        func=randomize_robot_color,
+        mode="reset",
+        params={"color_names": ["purple"]},
+    )
+
 
 @configclass
 class T1CubeBoxEventDRCfg(T1CubeBoxEventCfg):
+    # DR에서는 색을 무작위화 (base의 set_robot_purple 비활성화)
+    set_robot_purple = None
     reset_set_robot_visual_material = EventTerm(
         func=randomize_robot_color,
         mode="reset",

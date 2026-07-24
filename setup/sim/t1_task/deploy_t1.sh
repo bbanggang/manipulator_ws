@@ -22,11 +22,16 @@ if not os.path.exists(tb):
 else:
     print("  tray_black.usda 존재")
 # 2) env cfg (stdin 경유로 별도 복사됨 — 여기선 존재만 확인)
-# 3) reset_cube_box → resets.py
+# 3) reset_cube_box → resets.py + ROBOT_COLORS에 purple 추가
 rp = f"{W}/mdp/resets.py"; s = open(rp).read()
 if "def reset_cube_box" not in s:
-    s += open("/tmp/_t1_reset.py").read(); open(rp, "w").write(s); print("  resets.py: reset_cube_box append")
-else: print("  resets.py: 이미 있음")
+    s += open("/tmp/_t1_reset.py").read(); print("  resets.py: reset_cube_box append")
+else: print("  resets.py: reset_cube_box 이미 있음")
+if '"purple"' not in s:
+    s = s.replace("ROBOT_COLORS = {\n", 'ROBOT_COLORS = {\n    "purple": (0.5, 0.1, 0.75),\n', 1)
+    print("  resets.py: ROBOT_COLORS purple 추가")
+else: print("  resets.py: purple 이미 있음")
+open(rp, "w").write(s)
 # 4) gym.register → __init__.py
 ip = f"{W}/tasks/__init__.py"; s = open(ip).read()
 if "Lerobot-So101-T1-CubeBox" not in s:
