@@ -71,8 +71,8 @@ box = RigidObjectCfg(
         scale=(BOX_SCALE, BOX_SCALE, 1.0),
         mass_props=sim_utils.MassPropertiesCfg(mass=0.5),
     ),
-    # 로봇 base(-0.05, 0) 오른쪽(-y)에 배치. (오른쪽/왼쪽은 육안 확인 후 y 부호로 조정)
-    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, -0.18, BOX_SPAWN_Z)),
+    # 로봇 base(-0.05, 0) 오른쪽(-y), base 가까이 배치. (좌우는 y 부호로 조정)
+    init_state=RigidObjectCfg.InitialStateCfg(pos=(-0.03, -0.13, BOX_SPAWN_Z)),
 )
 
 # 박스 로컬 판정 경계 (tray extent 0→(0.2,0.16), 축소 0.6 → 0→(0.12,0.096)). 검증 시 튜닝.
@@ -90,19 +90,24 @@ class T1CubeBoxSceneCfg(SO101TaskSceneCfg):
     cube = cube.replace()
     box = box.replace()
 
-    # mat 제거 → 큰 회색 ground 바닥으로 대체 (base scene엔 ground plane이 없어 바닥 콜라이더 필요).
-    # 이름·경로는 "Mat" 유지(DR randomize_mat_rotation 호환 — 큰 대칭 바닥이라 ±yaw 회전 무해).
-    # top=GROUND_TOP(0)에 로봇 base·큐브·박스가 같은 평면에 안착.
-    mat = AssetBaseCfg(
+    # mat 제거 → 큰 회색 ground 바닥. ⚠️ AssetBaseCfg 정적 collision은 GPU 물리 파이프라인에서
+    # 등록이 안 돼 물체가 바닥을 통과·낙하함(원본 mat.usda는 USD에 PhysX collision이 구워져 있어 됐음).
+    # → kinematic RigidObject로 확실한 collision 확보. 로봇 fixed-base와 둘 다 immovable이라 겹쳐도 안정.
+    # (reset_mat_rotation은 T1CubeBoxEventCfg에서 비활성화 → RigidObject의 prim_paths 미보유 무방)
+    mat = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/Mat",
         spawn=sim_utils.CuboidCfg(
             size=(2.0, 2.0, 0.02),
-            collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=True),
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(kinematic_enabled=True),
+            collision_props=sim_utils.CollisionPropertiesCfg(),
+            physics_material=sim_utils.RigidBodyMaterialCfg(
+                static_friction=1.0, dynamic_friction=1.0
+            ),
             visual_material=sim_utils.PreviewSurfaceCfg(
                 diffuse_color=(0.35, 0.35, 0.35)  # 중립 회색 바닥
             ),
         ),
-        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.0, 0.0, GROUND_TOP - 0.01)),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, GROUND_TOP - 0.01)),
     )
 
     # 그리퍼 jaw ↔ 큐브 접촉 센서 (파지 감지)
@@ -135,6 +140,9 @@ class T1CubeBoxDRSceneCfg(T1CubeBoxSceneCfg):
 @configclass
 class T1CubeBoxEventCfg(TaskEventCfg):
     """큐브·박스 리셋 (큐브 위치 다양화, 박스는 소폭)."""
+
+    # mat이 RigidObject(kinematic 바닥)라 prim_paths 미보유 → mat 회전 DR 비활성화
+    reset_mat_rotation = None
 
     reset_cube_setup = EventTerm(
         func=reset_cube_box,
